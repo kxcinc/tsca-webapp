@@ -3,11 +3,11 @@
    [reagent.core :as reagent]
    [reagent.dom :as rdom]
    [re-frame.core :as re-frame]
-   [tsca-webapp.events :as events]
-   [tsca-webapp.routes :as routes]
-   [tsca-webapp.views :as views]
+   [tsca-webapp.routes.events :as events]
+   [tsca-webapp.routes.routes :as routes]
+   [tsca-webapp.routes.views :as views]
    [tsca-webapp.config :as config]
-   ))
+   [tsca-webapp.effects]))
 
 
 (defn dev-setup []
