@@ -37,7 +37,8 @@
                              :linux   "xdg-open"}}}
 
   :shadow-cljs {:nrepl {:port 8777}
-                
+                :ssl {:keystore "ssl/keystore.jks"
+                      :password "shadow-cljs"}
                 :builds {:app {:target :browser
                                :output-dir "resources/public/js/compiled"
                                :asset-path "/js/compiled"
