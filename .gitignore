@@ -16,3 +16,6 @@
 /.shadow-cljs/
 /resources/public/css/
 /ssl/
+
+# generated source code
+/gen/
