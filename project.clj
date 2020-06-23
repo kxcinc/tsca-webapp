@@ -20,7 +20,7 @@
 
   :jvm-opts ["-Xmx1G"]
 
-  :source-paths ["src/clj" "src/cljs"]
+  :source-paths ["src/clj" "src/cljs" "gen/js" ]
 
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"
                                     "resources/public/css"]
@@ -57,6 +57,10 @@
 
   :aliases {"dev"          ["with-profile" "dev" "do"
                             ["shadow" "watch" "app"]]
+            "prepare"      ["do"
+                            ["shadow" "npm-deps"]
+                            ["garden" "once"]
+                            ["shell" "npm" "run" "vendor-make"]]
             "prod"         ["with-profile" "prod" "do"
                             ["shadow" "release" "app"]]
             "build-report" ["with-profile" "prod" "do"

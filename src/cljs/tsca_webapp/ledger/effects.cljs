@@ -4,7 +4,11 @@
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    ["buffer" :as buffer]
    ["@ledgerhq/hw-transport-u2f" :as u2f]
-   ))
+   ["@ledgerhq/logs" :as lglog]
+   ["/hw-app-xtz/tezos.js" :as xtz]))
+
+(defonce _
+  (lglog/listen (fn [log] (js/console.log log))))
 
 (defn- hex-str->buffer [hex-str]
   (->> hex-str
@@ -21,7 +25,7 @@
                                         (.slice -2)))
       (.join " ")))
 
-(def scramble-key "xtz")
+(def scramble-key "XTZ")
 
 (defn- transport-through-apdu [command-buf]
   (-> (.-default u2f)
@@ -29,8 +33,19 @@
       (.then (fn [transport]
                (js/console.log transport)
                (.setScrambleKey transport scramble-key)
-               (.setUnwrap transport false)
-               (.exchange transport command-buf)))))
+               (.setUnwrap transport true)
+               (-> (.exchange transport command-buf)
+                   (.then (fn [result]
+                            (let [app (new xtz/Tezos transport buffer)]
+                              (js/console.log "xtz-app" app)
+                              (-> (app.getVersion)
+                                  (.then #(js/console.log "Ledger Tezos Version: " %))
+                                  (.then (fn [& _]
+                                           (do
+                                             (-> (app.getAddress "44'/1729'/0'/0'" true)
+                                                 (.then #(js/console.log "public key?" %)))
+                                             nil)))))
+                            result)))))))
 
 (defn try-promise [body]
   (js/Promise. (fn [resolve reject]
