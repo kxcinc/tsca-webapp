@@ -39,6 +39,9 @@
   (defroute "/clerk/" []
     (re-frame/dispatch [::events/set-active-panel :clerk-panel]))
 
+  (defroute "/recaptcha/" []
+    (re-frame/dispatch [::events/set-active-panel :recaptcha-panel]))
+
 
   ;; --------------------
   (hook-browser-navigation!))

@@ -5,7 +5,8 @@
    [tsca-webapp.book.views :as book]
    [tsca-webapp.chain-clerk.views :as clerk]
    [tsca-webapp.spell-assistant.views :as assistant]
-   [tsca-webapp.ledger.views :as ledger]))
+   [tsca-webapp.ledger.views :as ledger]
+   [tsca-webapp.recaptcha.views :as recaptcha]))
 
 (defn about-panel []
   [:div
@@ -23,6 +24,7 @@
     :book-top           [book/book-top]
     :spell-runner-panel [assistant/spell-assistant-top]
     :clerk-panel        [clerk/clerk-top]
+    :recaptcha-panel    [recaptcha/top]
     [:h1 "not found"]))
 
 (defn show-panel [panel-name]
