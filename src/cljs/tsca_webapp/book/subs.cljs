@@ -8,11 +8,11 @@
              :synopsis "Book of Funny is a demo-purpose contract template that creates a contract that sends back to the invoker half of its current balance every time it is invoked. It could be invoked by anyone so basically the originator is likely to be losing tokens. Do not use this template on networks with real tokens."
              :basic-facts {:provider
                            {:value "The TSCA Team"
-                            :description (str "hoge fuga hoge fuga hoge fuga hoge fuga"
-                                              "hoge fuga hoge fuga hoge fuga hoge fuga"
-                                              "hoge fuga hoge fuga hoge fuga hoge fuga")}
-                           :contract-complexity {:value "Very low" :description ":joy:"}
-                           :certification-status {:value "Carefully reviewed" :description ":thinking_face"}
+                            :url "https://tezos.foundation/"}
+                           :contract-complexity {:value "Very low"
+                                                 :url "https://tezos.foundation/"}
+                           :certification-status {:value "Carefully reviewed"
+                                                  :url "https://tezos.foundation/"}
                            :template-fees {:template-provider 0.5
                                            :agency 0.5}}
              :template-details
@@ -31,14 +31,11 @@
              :title "Book of Frozen"
              :synopsis "Book of Frozen creates a contract that freeze its initial balance until a configurable “unfrozen timestamp”"
              :basic-facts {:provider {:value "The TSCA Team"
-                                      :description (str "hoge fuga foo bar "
-                                                        "hoge fuga foo bar "
-                                                        "hoge fuga foo bar "
-                                                        "hoge fuga foo bar "
-                                                        "hoge fuga foo bar "
-                                                        "hoge fuga foo bar ")}
-                           :contract-complexity {:value "Low" :description ":joy:"}
-                           :certification-status {:value "Formally certified and mechanically verified" :description ":thinking_face:"}
+                                      :url "https://tezos.foundation/"}
+                           :contract-complexity {:value "Low"
+                                                 :url "https://tezos.foundation/"}
+                           :certification-status {:value "Formally certified and mechanically verified"
+                                                  :url "https://tezos.foundation/"}
                            :template-fees {:template-provider 1.5
                                            :agency 0.5}}
              :template-details

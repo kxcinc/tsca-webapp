@@ -29,8 +29,11 @@
     [:div.card
      [:div.card-body popover]]]])
 
-(defn- text-with-popover [{:keys [value description]}]
-  [:div value (info-icon [:div description])])
+(defn- link-icon [link-url]
+  [:a {:href link-url :target "_blank"} [:i.icon.icon-link]])
+
+(defn- text-with-link-icon [{:keys [value url]}]
+  [:div value " " (link-icon url)])
 
 (defn- fee-block [{:keys [template-provider agency]}]
   [:div
@@ -54,9 +57,9 @@
         [:div.card-header [:h2 "Basic Facts"]]
         [:div.card-body
          [:div.columns 
-          (for [[label v] [["Provider" (text-with-popover (:provider basic-facts))]
-                           ["Contract Complexity" (text-with-popover (:contract-complexity basic-facts))]
-                           ["Certification Status" (text-with-popover (:certification-status basic-facts))]
+          (for [[label v] [["Provider" (text-with-link-icon (:provider basic-facts))]
+                           ["Contract Complexity" (text-with-link-icon (:contract-complexity basic-facts))]
+                           ["Certification Status" (text-with-link-icon (:certification-status basic-facts))]
                            ["Template Fees" (fee-block (:template-fees basic-facts))]]]
             (seq [[:div.column.col-2.text-bold label]
                   [:div.column.col-4 v]]))]
@@ -73,7 +76,7 @@
               (map-indexed (fn [i {:keys [param-name description]}]
                              [:div.columns {:key param-name}
                               [:div.column.col-xl-12.col-2.monospace (str " " (inc i) ". " param-name)]
-                              [:div.column.col-xl-12.col-9.text-small description]])))
+                              [:div.column.col-xl-12.col-9 description]])))
          [:div.gap]
          (term-block "Contract Terms in English" (:contract-terms template-details) true
                      agreements :contract-terms "I understand")
