@@ -26,4 +26,5 @@
   [:.flexbox      {:display "flex"
                    :flex-wrap "wrap"}
    [:a   {:margin  "0 18px"}]]
-  [:.popover-container.popover-large {:width "380px"}])
+  [:.popover-container.popover-large {:width "380px"}]
+  [:.grecaptcha-badge {:visibility "hidden"}])
