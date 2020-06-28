@@ -7,6 +7,7 @@
                  [thheller/shadow-cljs "2.9.3"]
                  [reagent "0.10.0"]
                  [re-frame "0.12.0"]
+                 [binaryage/oops "0.7.0"]
                  [day8.re-frame/tracing "0.5.5"]
                  [clj-commons/secretary "1.2.4"]
                  [garden "1.3.10"]

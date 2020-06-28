@@ -61,3 +61,9 @@
  (fn [{:keys [params done-event-id cancel-event-id]}]
    (let [x (mock/cancelableSleep 1500 123.4)]
      (register-process :spell-process x.promise done-event-id x.cancel cancel-event-id))))
+
+(re-frame/reg-fx
+ :ledger
+ (fn [{:keys [find done-event-id cancel-event-id]}]
+   (let [x (mock/cancelableSleep (if (= find :confirming) 5000 2000) "tzxxxxxxxx")]
+     (register-process find x.promise done-event-id x.cancel cancel-event-id))))

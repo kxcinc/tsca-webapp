@@ -33,7 +33,7 @@
  ::apdu-error
  :<- [::apdu]
  (fn [apdu _]
-   (str (:error apdu))))
+   (some-> (:error apdu) str)))
 
 (re-frame/reg-sub
  ::apdu-result
@@ -46,7 +46,8 @@
      (or error message))))
 
 (re-frame/reg-sub
- ::apdu-sending-button-class
+ ::button-class
  :<- [::apdu-sending?]
  (fn [sending? _]
-   (common/button-class sending?)))
+   (str (common/button-class sending?)
+        (when sending? " loading"))))

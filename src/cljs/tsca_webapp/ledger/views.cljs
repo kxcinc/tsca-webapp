@@ -12,13 +12,13 @@
      [:div {:class "form-horizontal"}
       [:div {:class "form-group"}
        [:div {:class "col-3 col-sm12"}
-        [:label {:class "form-label" :for "input-apdu"} "APDU"]]
+        [:label {:class "form-label" :for "input-op"} "Operation"]]
        [:div {:class "col-9 col-sm12"}
-        [common/input "input-apdu" :ledger-sending-apdu entering-command]]]
+        [common/input "input-op" :ledger-sign-op entering-command]]]
       [:div {:class "form-group"}
-       [:button {:class @(re-frame/subscribe [::subs/apdu-sending-button-class])
-                 :on-click #(re-frame/dispatch [::events/ledger-sending-apdu @entering-command])}
-        "Send"]]
+       [:button {:class @(re-frame/subscribe [::subs/button-class])
+                 :on-click #(re-frame/dispatch [::events/ledger-sign-op @entering-command])}
+        "Sign"]]
 
       [:div {:class "form-group"}
        [:div {:class "col-3 col-sm12"}

@@ -15,17 +15,91 @@
  (fn-traced
   [cofx _]
   (move-step cofx :forward #(case %
-                              :user-confirmation :address-selection
-                              :address-selection :simulation
-                              :simulation        :run
-                              :run :run))))
+                              :user-confirmation :doit
+                              :doit :doit))))
 
 (re-frame/reg-event-fx
  ::go-back-previous-step
  (fn-traced
   [cofx _]
-  (move-step cofx :backward #(case %
-                               :user-confirmation :user-confirmation
-                               :address-selection :user-confirmation
-                               :simulation        :address-selection
-                               :run :simulation))))
+  cofx))
+
+;; pubkey
+
+(re-frame/reg-event-fx
+ ::start-ledger-pubkey
+ (fn-traced [{:keys [db]} _]
+            {:db (-> db
+                     (assoc-in [:clerk :ledger :state :pubkey ] {:status :finding-ledger
+                                                                 :source-address nil}))
+             :ledger-ready? {:success-id ::ledger-connected-pubkey
+                             :error-id   ::error-occured-pubkey}}))
+
+(re-frame/reg-event-fx
+ ::ledger-connected-pubkey
+ (fn-traced [{:keys [db]} _]
+            {:db (assoc-in db [:clerk :ledger :state :pubkey :status] :confirming)
+             :ledger-pk {:success-id ::find-ledger-source-address
+                         :error-id   ::error-occured-pubkey}}))
+
+(re-frame/reg-event-fx
+ ::find-ledger-source-address
+ (fn-traced [{:keys [db]} [_ public-key]]
+            (js/console.log "public key" public-key)
+            {:db (assoc-in db [:clerk :ledger :state :pubkey :status] :finding-source-address)
+             :ledger {:find :source-address
+                      :done-event-id ::found-source-address
+                      :cancel-event-id ::error-occured-pubkey}}))
+
+(re-frame/reg-event-db
+ ::error-occured-pubkey
+ (fn-traced [db [_ ex]]
+            (-> db
+                (assoc-in [:clerk :ledger :state :pubkey :status] :error)
+                (assoc-in [:clerk :ledger :state :pubkey :error] ex))))
+
+
+(re-frame/reg-event-db
+ ::found-source-address
+ (fn-traced [db [_ source-address]]
+            (-> db
+                (assoc-in [:clerk :ledger :state :pubkey :status] :found)
+                (assoc-in [:clerk :ledger :state :pubkey :source-address] source-address))))
+
+
+;; op
+(re-frame/reg-event-fx
+ ::start-ledger-op
+ (fn-traced [{:keys [db]} _]
+            {:db (-> db
+                     (assoc-in [:clerk :ledger :state :op ] {:status :finding-ledger}))
+             :ledger-ready? {
+                      :success-id ::ledger-connecting-op
+                      :error-id   ::error-occured-op}}))
+
+(re-frame/reg-event-fx
+ ::ledger-connecting-op
+ (fn-traced [{:keys [db]} _]
+            {:db (assoc-in db [:clerk :ledger :state :op :status] :confirming)
+             :ledger-sign {:success-id ::ledger-signed
+                           :error-id   ::error-occured-op}}))
+(re-frame/reg-event-fx
+ ::ledger-signed
+ (fn-traced [{:keys [db]} _]
+            {:db (assoc-in db [:clerk :ledger :state :op :status] :sending-op)
+             :ledger {:find :sending
+                      :done-event-id ::done
+                      :cancel-event-id ::error-occured-op}}))
+
+(re-frame/reg-event-db
+ ::done
+ (fn-traced [db [_ ex]]
+            (-> db
+                (assoc-in [:clerk :ledger :state :op :status] :done))))
+
+(re-frame/reg-event-db
+ ::error-occured-op
+ (fn-traced [db [_ ex]]
+            (-> db
+                (assoc-in [:clerk :ledger :state :op :status] :error)
+                (assoc-in [:clerk :ledger :state :op :error] ex))))
