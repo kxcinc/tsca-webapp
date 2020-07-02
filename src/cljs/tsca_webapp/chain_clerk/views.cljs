@@ -70,12 +70,6 @@
   (->> (map obj fields)
        (every? #(not (or (nil? %) (empty? %))))))
 
-(defn input [state key-path]
-  [:input {:class "form-input"
-           :type "text"
-           :value (get-in @state key-path)
-           :on-change   #(swap! state assoc-in key-path (-> % .-target .-value))}])
-
 (defn- proceed-button [state]
   [:div
    [:button.btn.btn-primary
@@ -142,19 +136,19 @@
            [:div.col-3.col-md-12
             [:label.form-label {:for "input-text"} "Name"]]
            [:div {:class "col-9 col-md-12"}
-            [input state [:entering :name]]]]
+            [common/input state [:entering :name]]]]
           [:div.form-group
            [:div {:class "col-3 col-md-12"}
             [:label.form-label {:for "input-text"} "e-mail"]]
            [:div {:class "col-9 col-md-12"}
-            [input state [:entering :e-mail]]]]
+            [common/input state [:entering :e-mail]]]]
 
           [:div.divider]
           [:div.form-group
            [:div {:class "col-3 col-md-12"}
             [:label.form-label {:for "input-text"} "Source Address"]]
            [:div {:class "col-6 col-md-6"}
-            [input state [:entering :source-address]]]
+            [common/input state [:entering :source-address]]]
            [:div.text-right {:class "col-3 col-md-6"}
             [:div " or "
              [:button.btn

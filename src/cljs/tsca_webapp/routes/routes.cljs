@@ -24,6 +24,10 @@
     (re-frame/dispatch [::events/set-active-panel :home-panel])
     )
 
+  (defroute "/widgets/spellassistant/proto0/frozen/:label" {:as params}
+    (let [params (merge params {:book :frozen})]
+      (re-frame/dispatch [::events/set-active-panel :spell-assistant params])))
+
   (defroute "/about" []
     (re-frame/dispatch [::events/set-active-panel :about-panel]))
 

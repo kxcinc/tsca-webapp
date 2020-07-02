@@ -20,12 +20,12 @@
          [:div {:class "col-3 col-sm12"}
           [:label {:class "form-label" :for "input-text"} "Text Field"]]
          [:div {:class "col-9 col-sm12"}
-          [common/input "input-text" :sending-spell entering-text]]]
+          [common/input-with-trigger "input-text" :sending-spell entering-text]]]
         [:div {:class "form-group"}
          [:div {:class "col-3 col-sm12"}
           [:label {:class "form-label" :for "input-text"} "Number Field"]]
          [:div {:class "col-9 col-sm12"}
-          [common/input "input-num" :sending-spell entering-num]]]]]
+          [common/input-with-trigger "input-num" :sending-spell entering-num]]]]]
       [:div.panel-footer
        [:button {:class @(re-frame/subscribe [::subs/spell-button-class])
                  :on-click #(re-frame/dispatch

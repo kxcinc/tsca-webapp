@@ -4,6 +4,7 @@
    [tsca-webapp.routes.subs :as subs]
    [tsca-webapp.book.views :as book]
    [tsca-webapp.chain-clerk.views :as clerk]
+   [tsca-webapp.sa-proto.views :as sa-proto]
    [tsca-webapp.spell-assistant.views :as assistant]
    [tsca-webapp.ledger.views :as ledger]))
 
@@ -22,6 +23,7 @@
     :home-panel         [book/home-panel]
     :book-top           [book/book-top]
     :spell-runner-panel [assistant/spell-assistant-top]
+    :spell-assistant    [sa-proto/top]
     :clerk-panel        [clerk/clerk-top]
     [:h1 "not found"]))
 

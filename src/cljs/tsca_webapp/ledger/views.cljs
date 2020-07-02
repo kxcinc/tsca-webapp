@@ -14,7 +14,7 @@
        [:div {:class "col-3 col-sm12"}
         [:label {:class "form-label" :for "input-op"} "Operation"]]
        [:div {:class "col-9 col-sm12"}
-        [common/input "input-op" :ledger-sign-op entering-command]]]
+        [common/input-with-trigger "input-op" :ledger-sign-op entering-command]]]
       [:div {:class "form-group"}
        [:button {:class @(re-frame/subscribe [::subs/button-class])
                  :on-click #(re-frame/dispatch [::events/ledger-sign-op @entering-command])}
