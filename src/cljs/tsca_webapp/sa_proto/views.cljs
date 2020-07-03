@@ -46,7 +46,9 @@
     (let [st @state]
       [:pre
        (str (try (serializer (:entering st))
-                 (catch :default e "error!")) "\n" (everything-valid? @validation))])]])
+                 (catch :default e "error!")) "\n" (everything-valid? @validation))])
+    [:div "networks:" (str @(re-frame/subscribe [::subs/networks]))]
+    [:div "target spec:" @(re-frame/subscribe [::subs/target-spec])]]])
 
 (defn- proceed-button [validation]
   [:button.btn.btn-primary
