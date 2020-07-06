@@ -47,9 +47,10 @@
  (fn-traced [{:keys [db]} [_ public-key]]
             (js/console.log "public key" public-key)
             {:db (assoc-in db [:clerk :ledger :state :pubkey :status] :finding-source-address)
-             :ledger {:find :source-address
-                      :done-event-id ::found-source-address
-                      :cancel-event-id ::error-occured-pubkey}}))
+             :sleep {:return-value public-key
+                     :sec 1.5
+                     :success-id ::found-source-address
+                     :error-id ::error-occured-pubkey}}))
 
 (re-frame/reg-event-db
  ::error-occured-pubkey
@@ -87,9 +88,9 @@
  ::ledger-signed
  (fn-traced [{:keys [db]} _]
             {:db (assoc-in db [:clerk :ledger :state :op :status] :sending-op)
-             :ledger {:find :sending
-                      :done-event-id ::done
-                      :cancel-event-id ::error-occured-op}}))
+             :sleep {:return-value "ok"
+                     :sec 2
+                     :success-id ::done}}))
 
 (re-frame/reg-event-db
  ::done

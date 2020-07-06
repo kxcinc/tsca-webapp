@@ -12,7 +12,8 @@
                        (assoc-in [:apdu :error] nil))
                :ledger-sign {:command command
                              :success-id ::ledger-received-success
-                             :error-id    ::ledger-received-failure}})))
+                             :error-id    ::ledger-received-failure
+                             :cancel-id  ::ledger-received-canceled}})))
 
 (re-frame/reg-event-db
  ::ledger-received-success
@@ -28,3 +29,10 @@
             (-> db
                 (assoc-in [:apdu :status] :waiting)
                 (assoc-in [:apdu :error] ex))))
+
+(re-frame/reg-event-db
+ ::ledger-received-canceled
+ (fn-traced [db _]
+            (-> db
+                (assoc-in [:apdu :status] :waiting)
+                (assoc-in [:apdu :error] nil))))

@@ -1,9 +1,9 @@
-export function sleep(x){
+export function sleep(x, result){
     console.log("wait: " + x);
     return new Promise(function(resolve, reject){
         window.setTimeout(function(){
             console.log("wait done: " + x);
-            resolve(x);
+            resolve(result);
         }, x);
     });
 }

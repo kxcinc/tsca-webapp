@@ -1,6 +1,7 @@
 (ns tsca-webapp.ledger.effects
   (:require
    [re-frame.core :as re-frame]
+   [tsca-webapp.task.effects :as task]
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    ["buffer" :as buffer]
    ["@ledgerhq/hw-transport-u2f" :as u2f]
@@ -75,26 +76,25 @@
   (show (version))
   (show (sign "ef3ccca0cf0a4c1706cdd89d30f3ac3cef34fc78c23f140231c969501bc387d16c001e44b16562327dd33068e4731764191461bcccbe830af2ef25c35000a08d0600000d3c0b644fdf9081e80f73dd3a4735c5632c81da00") ))
 
-(defn- callback [{:keys [success-id error-id]} promise]
-  (-> promise
-      (.then #(re-frame/dispatch [success-id %]))
-      (.catch #(do
-                 (js/console.error %)
-                 (re-frame/dispatch [error-id (parse-ledger-error %)])))))
+(defn- wrap-error [p]
+  (.catch p
+          #(js/Promise.reject
+            (parse-ledger-error %))))
 
 (re-frame/reg-fx
  :ledger-ready?
  (fn [m]
-   (callback m (-> (version)
-                   (.then (fn [] true))))))
+   (task/callback m (-> (version)
+                        (.then (fn [] true))
+                        wrap-error))))
 
 (re-frame/reg-fx
  :ledger-pk
  (fn [m]
-   (callback m (address))))
+   (task/callback m (wrap-error (address)))))
 
 
 (re-frame/reg-fx
  :ledger-sign
  (fn [{:keys [operation-text] :as m}]
-   (callback m (sign operation-text))))
+   (task/callback m (wrap-error (sign operation-text)))))

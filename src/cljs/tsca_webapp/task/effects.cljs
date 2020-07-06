@@ -9,40 +9,47 @@
 (defn- call-after [f]
   (js/setTimeout f 0))
 
-(defn- register-process [id promise callback-event-id cancel-func cancel-event-id]
-  (let [runner (fn [table]
-                 (when-let [m (get table id)]
-                   (if-let [f (:cancel-func m)]
-                     (do
-                       (js/console.log (str id " is already registered. try cancel now"))
-                       (f))
-                     (js/console.log (str id " is already registered."))))
-                 (call-after
-                  (fn []
-                    (-> promise
-                        (.then (fn [result]
-                                 (swap! processes #(dissoc % id))
-                                 (re-frame/dispatch [callback-event-id result]))))))
-                 (assoc table id {:promise promise
-                                  :callback-event-id callback-event-id
-                                  :cancel-func cancel-func
-                                  :cancel-event-id cancel-event-id}))]
-    (swap! processes runner)))
+(defn- register-process
+  [id promise success-id error-id cancel-func cancel-id]
+  (let [dispatch   (fn [id event-id x]
+                     (if (get @processes id)
+                       (do (swap! processes #(dissoc % id))
+                           (when event-id (re-frame/dispatch [event-id x])))
+
+                       (js/console.log (str "id:" id " canceled already")
+                                       event-id
+                                       x)))
+        id         (or id (random-uuid))
+        on-success (fn [result]
+                     (dispatch id success-id result))
+        on-error   (fn [ex]
+                     (dispatch id error-id ex))
+        swapping   (fn [table]
+                     (call-after
+                      (fn []
+                        (-> promise
+                            (.then on-success)
+                            (.catch on-error))))
+                     (assoc table id {:promise promise
+                                      :cancel-func cancel-func
+                                      :cancel-id cancel-id}))]
+    (swap! processes swapping)))
+
+(defn callback [{:keys [success-id error-id cancel-id cancel-func]} promise]
+  (register-process nil promise success-id error-id cancel-func cancel-id))
 
 (defn cancel-process [id]
   (swap! processes (fn [table]
-                     (when-let [{:keys [cancel-func cancel-event-id]} (get table id)]
+                     (when-let [{:keys [cancel-func cancel-id]} (get table id)]
                        (when cancel-func (cancel-func))
-                       (re-frame/dispatch [cancel-event-id]))
+                       (when cancel-id (re-frame/dispatch [cancel-id])))
                      (dissoc table id))))
 
 (defn cancel-all []
   (swap! processes (fn [table]
-                     (doseq [id (keys table)]
-                       (when-let [f (-> table id :cancel-func)]
-                         (f))
-                       (when-let [event-id (-> table id :cancel-event-id)]
-                         (re-frame/dispatch [event-id])))
+                     (doseq [{:keys [cancel-func cancel-id] :as m} (vals table)]
+                       (when cancel-func (cancel-func))
+                       (when cancel-id (re-frame/dispatch [cancel-id])))
                      {})))
 
 (re-frame/reg-fx
@@ -51,19 +58,17 @@
    (cancel-all)))
 
 (re-frame/reg-fx
- :spell
- (fn [{:keys [params done-event-id cancel-event-id]}]
-   (let [x (mock/cancelableSleep 1000 (clj->js params))]
-     (register-process :spell-process x.promise done-event-id x.cancel cancel-event-id))))
+ :sleep
+ (fn [{:keys [success-id cancel-id return-value sec task-id]}]
+   (let [x (mock/cancelableSleep (* 1000 sec) return-value)]
+     (register-process task-id
+                       x.promise success-id nil
+                       x.cancel cancel-id))))
 
 (re-frame/reg-fx
- :estimate
- (fn [{:keys [params done-event-id cancel-event-id]}]
-   (let [x (mock/cancelableSleep 1500 123.4)]
-     (register-process :spell-process x.promise done-event-id x.cancel cancel-event-id))))
+ :sleep-force
+ (fn [{:keys [success-id cancel-id return-value sec task-id]}]
+   (register-process task-id
+                     (mock/sleep (* 1000 sec) return-value) success-id nil
+                     nil cancel-id)))
 
-(re-frame/reg-fx
- :ledger
- (fn [{:keys [find done-event-id cancel-event-id]}]
-   (let [x (mock/cancelableSleep (if (= find :confirming) 5000 2000) "tzxxxxxxxx")]
-     (register-process find x.promise done-event-id x.cancel cancel-event-id))))

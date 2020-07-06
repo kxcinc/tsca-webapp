@@ -7,3 +7,6 @@
  ::cancel
  (fn-traced [{:keys [db]} _]
             {:process-cancel nil}))
+
+(defn cancel-all []
+  (re-frame/dispatch [::cancel]))

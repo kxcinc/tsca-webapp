@@ -13,9 +13,10 @@
             {:db (-> db
                      (assoc-in [:spell :status] :processing)
                      (clear-clerk))
-             :spell {:params params
-                     :done-event-id ::spell-out-done
-                     :cancel-event-id ::spell-out-cancelled}}))
+             :sleep {:return-value params
+                     :sec 1
+                     :success-id ::spell-out-done
+                     :cancel-id ::spell-out-cancelled}}))
 
 (re-frame/reg-event-fx
  ::spell-out-done
@@ -38,9 +39,10 @@
             {:db (-> db
                      (assoc-in [:estimate :status] :processing)
                      (assoc-in [:estimate :value] nil))
-             :estimate {:params params
-                        :done-event-id ::estimate-done
-                        :cancel-event-id ::estimate-cancelled}}))
+             :sleep {:return-value params
+                     :sec 2
+                     :success-id ::estimate-done
+                     :cancel-id ::estimate-cancelled}}))
 
 (re-frame/reg-event-fx
  ::estimate-done
