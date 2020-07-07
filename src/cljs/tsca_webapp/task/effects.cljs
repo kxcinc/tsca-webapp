@@ -58,8 +58,9 @@
 
 (re-frame/reg-fx
  :process-cancel
- (fn [_]
-   (cancel-all)))
+ (fn [{:keys [callback]}]
+   (cancel-all)
+   (when callback (re-frame/dispatch callback))))
 
 (re-frame/reg-fx
  :sleep

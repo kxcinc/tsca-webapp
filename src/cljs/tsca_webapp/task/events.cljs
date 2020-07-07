@@ -5,8 +5,8 @@
 
 (re-frame/reg-event-fx
  ::cancel
- (fn-traced [{:keys [db]} _]
-            {:process-cancel nil}))
+ (fn-traced [{:keys [db]} [_ event]]
+            {:process-cancel {:callback event}}))
 
 (defn cancel-all []
   (re-frame/dispatch [::cancel]))
