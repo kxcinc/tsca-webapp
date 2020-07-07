@@ -6,10 +6,14 @@
    [secretary.core :as secretary]
    [goog.events :as gevents]
    [re-frame.core :as re-frame]
-   [tsca-webapp.routes.events :as events]))
+   [tsca-webapp.routes.events :as events]
+   [tsca-webapp.book.events :as book]))
+
+;; it must be created initially and only once
+(defonce history (History.))
 
 (defn hook-browser-navigation! []
-  (doto (History.)
+  (doto history
     (gevents/listen
      EventType/NAVIGATE
      (fn [event]
@@ -21,8 +25,9 @@
   ;; --------------------
   ;; define routes here
   (defroute "/" []
-    (re-frame/dispatch [::events/set-active-panel :home-panel])
-    )
+    (re-frame/dispatch [::events/set-active-panel :home-panel
+                        nil
+                        [::book/open-list]]))
 
   (defroute "/widgets/spellassistant/proto0/frozen/:label" {:as params}
     (let [params (merge params {:book :frozen})]
@@ -35,7 +40,7 @@
     (re-frame/dispatch [::events/set-active-panel :ledger-panel]))
 
   (defroute "/:bookhash" {:as params}
-    (re-frame/dispatch [::events/set-active-panel :book-top params]))
+    (re-frame/dispatch [::events/set-active-panel :book-top params [::book/open params]]))
 
   (defroute "/sr/" []
     (re-frame/dispatch [::events/set-active-panel :spell-runner-panel]))

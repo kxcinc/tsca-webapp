@@ -23,6 +23,10 @@
         on-success (fn [result]
                      (dispatch id success-id result))
         on-error   (fn [ex]
+                     (js/console.error "Error" (str {:success-id success-id
+                                             :error-id error-id
+                                             :cancel-id cancel-id})
+                                       ex)
                      (dispatch id error-id ex))
         swapping   (fn [table]
                      (call-after

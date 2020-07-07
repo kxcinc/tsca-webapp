@@ -11,7 +11,8 @@
                  [day8.re-frame/tracing "0.5.5"]
                  [clj-commons/secretary "1.2.4"]
                  [garden "1.3.10"]
-                 [ns-tracker "0.4.0"]]
+                 [ns-tracker "0.4.0"]
+                 [org.clojure/core.match "1.0.0"]]
 
   :plugins [[lein-shadow "0.2.0"]
             [lein-garden "0.3.0"]

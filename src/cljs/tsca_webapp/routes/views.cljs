@@ -28,8 +28,14 @@
     [:h1 "not found"]))
 
 (defn show-panel [panel-name]
-  [panels panel-name])
+  (let [active-panel (re-frame/subscribe [::subs/active-panel])]
+    (if @active-panel
+      [(fn [] [panels @active-panel])]
+      [:h4 "Loading...."])))
 
 (defn main-panel []
-  (let [active-panel (re-frame/subscribe [::subs/active-panel])]
-    [show-panel @active-panel]))
+  (if @(re-frame/subscribe [::subs/aii-ready?])
+    [show-panel]
+    (if @(re-frame/subscribe [::subs/aii-loading?])
+      [:h4 "Loading.."]
+      [:div "Loading error"])))
