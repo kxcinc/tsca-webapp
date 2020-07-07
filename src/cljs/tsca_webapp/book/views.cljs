@@ -88,7 +88,7 @@
          (->> (:contract-parameters template-details)
               (map-indexed (fn [i {:keys [ident desc]}]
                              [:div.columns {:key ident}
-                              [:div.column.col-xl-12.col-2.monospace (str " " (inc i) ". " ident)]
+                              [:b.column.col-xl-12.col-2.monospace (str " " (inc i) ". " ident)]
                               [:div.column.col-xl-12.col-9 desc]])))
          [:div.gap]
          (term-block "Contract Terms in English" (:contract-terms template-details) true
