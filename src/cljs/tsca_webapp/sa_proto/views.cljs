@@ -87,12 +87,13 @@
 (defn- iso8601? [str]
   (boolean (and str (re-matches #"^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)?$" str))))
 
-(defn- genesis []
-  [{:label "Amount"      :field :amount       :validate-by not-empty? :convert :number
-    :invalid-message "should be positive number"}
-   {:label "Beneficiary" :field :beneficiary  :validate-by not-empty?}])
-
 (defn- withdraw []
+  [{:label "Amount"      :field :amount       :validate-by positive-number? :convert :number
+    :invalid-message "should be positive number"}
+   {:label "Beneficiary" :field :beneficiary  :validate-by not-empty?
+    :invalid-message "required"}])
+
+(defn- genesis []
   [{:label "Fund Owners" :field :fund-owners :validate-by not-empty?
     :invalid-message "required"}
    {:label "Fund Amount" :field :fund-ammount :validate-by positive-number? :convert :number
