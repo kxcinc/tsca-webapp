@@ -22,9 +22,8 @@
        [show-book-list]
        [:h4 @(re-frame/subscribe [::subs/loading-message])])]))
 
-(defn- term-block [title xs indexed? ratom path switch-label]
-  (common/agreement-checkboxes
-   [:h5 title] xs indexed? ratom path switch-label))
+(defn- term-block [xs indexed? ratom path switch-label]
+  (common/agreement-checkboxes xs indexed? ratom path switch-label))
 
 (defn- agreement-button [agreements agreed? subs-key label]
   (common/conditional-button agreements subs-key label #(reset! agreed? true)))
@@ -69,17 +68,15 @@
        [:div.card
         [:div.card-header [:h2 "Basic Facts"]]
         [:div.card-body
-         [:div.columns 
-          (for [[label v] [["Provider" (text-with-link-icon @(re-frame/subscribe [::subs/book-provider]))]
-                           ["Contract Complexity" (text-with-link-icon @(re-frame/subscribe [::subs/book-contract-complexity]))]
-                           ["Certification Status" (text-with-link-icon @(re-frame/subscribe [::subs/book-certification-status]))]
-                           ["Template Fees" (fee-block charge)]]]
-            (seq [[:div.column.col-2.text-bold label]
-                  [:div.column.col-4 v]]))]
+         [:div.columns
+          [:div.column.col-2.text-bold "Provider"] [:div.column.col-4 (text-with-link-icon @(re-frame/subscribe [::subs/book-provider]))]
+          [:div.column.col-2.text-bold "Contract Complexity"] [:div.column.col-4 (text-with-link-icon @(re-frame/subscribe [::subs/book-contract-complexity]))]
+          [:div.column.col-2.text-bold "Certification Status"] [:div.column.col-4 (text-with-link-icon @(re-frame/subscribe [::subs/book-certification-status]))]
+          [:div.column.col-2.text-bold "Template Fees"] [:div.column.col-4 (fee-block charge)]]
          [:div.gap]
          [:div.columns
-          [:div.column.col-xl-12.col-4.text-gray (str "book hash: " bookhash)]
-          [:div.column.col-xl-12.col-4.text-gray (str "template version: " tmplversion)]]]]
+          [:div.column.col-xl-12.col-6.text-gray (str "book hash: " bookhash)]
+          [:div.column.col-xl-12.col-6.text-gray (str "template version: " tmplversion)]]]]
        [:div.gap]
        [:div.card
         [:div.card-header [:h2 "Contract Details"]]
@@ -91,10 +88,12 @@
                               [:b.column.col-xl-12.col-2.monospace (str " " (inc i) ". " ident)]
                               [:div.column.col-xl-12.col-9 desc]])))
          [:div.gap]
-         (term-block "Contract Terms in English" (:contract-terms template-details) true
+         [:h5 "Contract Terms in English"]
+         (term-block (:contract-terms template-details) true
                      agreements :contract-terms "I understand")
          [:div.gap]
-         (term-block "Caveats" (:caveats template-details) false
+         [:h5 "Caveats"]
+         (term-block (:caveats template-details) false
                      agreements :caveats "I understand")
          [:div.gap]
          [:h5 "Formal Specification"]
@@ -108,7 +107,7 @@
        [:div.gap]
        [:div.column
         [agreement-button agreements show-assistant-atom ::subs/expected-agreements
-         ["Launch " [:i.icon.icon-upload]]]]])))
+         [:div "Launch " [:i.icon.icon-upload]]]]])))
 
 (defn- assistnt-modal [button-visible?]
   (when @button-visible?
@@ -130,20 +129,3 @@
        [book-header @book show-modal?]
        [assistnt-modal show-modal?]]
       [:h4 @(re-frame/subscribe [::subs/loading-message])])))
-
-;; {:bookhash "MOCK_bookhash_proto0_funny",
-;;  :tmplversion "MOCK_tmplversion_proto0_funny",
-;;  :spellAssistants {:genesis "MOCK_sahash_proto0_funny_genesis"
-;;                    , :iamfunny
-;;                    "MOCK_sahash_proto0_funny_iamfunny"}
-;;  , :bookapp "MOCK_bahash_proto0_funny0",
-;;  :provider "prvd_proto0_tsca"
-;;  , :basicinfo {:title "Book of Funny"
-;;   , :synopsis
-;;   "Book of Funny is a demo-purpose contract template that creates a contract that sends back to the invoker half of its current balance every time it is invoked. It could be invoked by anyone so basically the originator is likely to be losing tokens. Do not use this template on networks with real tokens."},
-;;  :detailedinfo {:parameters [{:ident "initial_balance",
-;;                               :desc "the initial balance of the contract to be originated"}]
-;;                 :englishterms [{:contents "Any implicit account could submit a transaction to the blockchain which results in an invocation to the originated contract. When such an invocation being successful, the originated contract will transfer half of its current balance back to the implicit account who submitted the transaction."
-;;                                 , :mandatory_consensus true}],
-;;                 :caveats [{:contents "DO NOT USE ON THE MAINNET: contracts originated from this template gives away its initial balance to anyone who requests, and is created solely for the purpose of demonstration. Therefore it is strongly advised against using this template on chains that doesn’t not have free tokens otherwise, especially the Tezos Mainnet."
-;;                            , :mandatory_consensus true}]}}

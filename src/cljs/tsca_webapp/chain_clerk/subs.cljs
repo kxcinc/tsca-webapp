@@ -98,20 +98,6 @@
  (fn [err _]
    (error-message err)))
 
-
-(re/reg-sub
- ::ledger-op-message
- :<- [::ledger-op-state]
- (fn [status _]
-   (case status
-     :finding-ledger "Connect your Ledger and launch Tezos App..."
-     :signing "signing ..."
-     :confirming "Click OK on your Ledger"
-     :sending-op "sending the operation  ..."
-     :done "Your operation done successfully!"
-     :error "ERROR!"
-     "(unknown state)")))
-
 (re/reg-sub
  ::ledger-op-status
  :<- [::ledger-op-state]

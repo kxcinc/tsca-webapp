@@ -62,7 +62,7 @@
         state (doto (reagent/atom {})
                 (add-watch :entering (fn [x state old new]
                                        (reset! validation (validator new)))))]
-    [:form.form-horizontal
+    [:div.form-horizontal
      (for [{:keys [label field validate-by invalid-message]} xs]
        [:div.form-group {:key field}
         [:div.col-3.col-md-12

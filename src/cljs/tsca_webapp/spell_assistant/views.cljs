@@ -75,13 +75,12 @@
         agreements (reagent/atom initial-agreements)
         terms @(re-frame/subscribe [::subs/assistant-terms])]
     [:div {:style {:display (when @agreed? "none")}}
-     (common/agreement-checkboxes
-      [:div.text-center.h3 "Terms Of The Service"]
-      terms false agreements :terms "agree")
+     [:div.text-center.h3 "Terms Of The Service"]
+     (common/agreement-checkboxes terms false agreements :terms "agree")
      [:div.gap]
      [:div.text-center
       [common/conditional-button agreements ::subs/expected-agreements-assistant
-       ["Use this template and create a Smart Contract now!" " "]
+       [:div "Use this template and create a Smart Contract now!" " "]
        #(reset! agreed? true)]]]))
 
 (defn spell-assistant-top []

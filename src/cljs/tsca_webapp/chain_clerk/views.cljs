@@ -131,7 +131,7 @@
        [:div.card-body
         [:div (class-for-visibility :user-confirmation)
          [:h3 "Please enter your information"]
-         [:form.form-horizontal
+         [:div.form-horizontal
           [:div.form-group
            [:div.col-3.col-md-12
             [:label.form-label {:for "input-text"} "Name"]]

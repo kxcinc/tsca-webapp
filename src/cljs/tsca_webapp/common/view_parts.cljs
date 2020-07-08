@@ -38,29 +38,27 @@
    [:i.form-icon] label])
 
 (defn labeled-checkbox [index key-prefix label switch-label on-change show-index? check?]
-  [:div.columns {:key (str key-prefix "-" index)}
+  [:div.columns.checkbox {:key (str key-prefix "-" index)}
    [:div.column.col-1.text-right (if show-index? (str (inc index) ". ") "- ")]
    [:div.column.col-8 label]
    [:label.column.col-3
     (when check? (checkbox  #(on-change % index) switch-label))]])
 
-(defn agreement-checkboxes [title labels show-index? ratom path switch-label]
+(defn agreement-checkboxes [labels show-index? ratom path switch-label]
   (let [toggle (fn [e index]
                  (swap! ratom assoc-in [path index] (-> e .-target .-checked)))
         need-checkbox (fn [l] (case (:mandatory_consensus l)
                                 true [(:contents l) true]
                                 false [(:contents l) false]
-                                [l true]))]
-    (cons title
-          (interpose
-           [:div.gap]
-           (->> labels
-                (map-indexed
+                                [l true]))
+        elements (map-indexed
                  (fn [i l]
                    (let [[message check?] (need-checkbox l)]
                      (labeled-checkbox i path message
                                        switch-label toggle
-                                       show-index? check?)))))))))
+                                       show-index? check?)))
+                 labels)]
+    elements))
 
 (defn- conditional-button [target subs-key label on-click]
   (let [expected (re-frame/subscribe [subs-key])]
@@ -68,4 +66,4 @@
       [:button.btn.btn-lg.btn-primary
        {:class (when (not= @expected @target) "disabled")
         :on-click on-click}
-       (seq label)])))
+       label])))
