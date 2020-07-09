@@ -101,9 +101,28 @@
    {:label "Unfrozen till" :field :unfrozen :validate-by iso8601?
     :invalid-message "ISO8601 format (e.g. 2020-07-02T00:00:00+09 )"}])
 
-(defn top []
-  [:div.docs-content
+(defn main [agreed?]
+  [:div {:style {:display (when (not @agreed?) "none")}}
    (case @(re-frame/subscribe [::subs/label])
      "withdraw" (forms (withdraw))
      "genesis" (forms (genesis))
      [:div "unknown label: " @(re-frame/subscribe [::subs/label])])])
+
+(defn- assistant-term [agreed?]
+  (let [initial-agreements @(re-frame/subscribe [::subs/initial-agreements-assistant])
+        agreements (reagent/atom initial-agreements)
+        terms @(re-frame/subscribe [::subs/assistant-terms])]
+    [:div {:style {:display (when @agreed? "none")}}
+     [:div.text-center.h3 "Terms Of The Service"]
+     (common/agreement-checkboxes terms false agreements :terms "agree")
+     [:div.gap]
+     [:div.text-center
+      [common/conditional-button agreements ::subs/expected-agreements-assistant
+       [:div "Use this template and create a Smart Contract now!" " "]
+       #(reset! agreed? true)]]]))
+
+(defn top []
+  (let [agreed? (reagent/atom false)]
+    [:div.docs-content
+     [main agreed?]
+     [assistant-term agreed?]]))

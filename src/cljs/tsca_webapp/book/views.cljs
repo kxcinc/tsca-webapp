@@ -114,7 +114,7 @@
     [:div.modal.active
      [:div.modal-container.modal-large
       [:div.modal-body
-       [:iframe {:src "#/sr/"}]]
+       [:iframe {:src "#/widgets/spellassistant/proto0/frozen/genesis"}]]
       [:div.modal-footer
        [:button.btn
         {:on-click #(reset! button-visible? false)}
