@@ -5,11 +5,12 @@
    [tsca-webapp.common.view-parts :as common]
    [tsca-webapp.sa-proto.subs :as subs]
    [tsca-webapp.routes.events :as routes]
-   [tsca-webapp.task.events :as task]))
+   [tsca-webapp.task.events :as task]
+   [clojure.string :as s]))
 
 (defn- to-json [obj]
   (-> (reduce-kv (fn [acc k v]
-                   (let [key (clojure.string/replace (name k) "-" "_")]
+                   (let [key (s/replace (name k) "-" "_")]
                      (assoc acc key v))) {} obj)
       clj->js
       js/JSON.stringify))
@@ -21,6 +22,7 @@
                     (assoc m field
                            (case convert
                              :number (cljs.reader/read-string v)
+                             :comma-separated (s/split v #",")
                              v))))
                 {}
                 xs)
@@ -96,6 +98,7 @@
 
 (defn- genesis []
   [{:label "Fund Owners" :field :fund-owners :validate-by not-empty?
+    :convert :comma-separated
     :invalid-message "required"}
    {:label "Fund Amount" :field :fund-ammount :validate-by positive-number? :convert :number
     :invalid-message "positive number ony"}
