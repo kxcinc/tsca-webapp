@@ -4,6 +4,7 @@
    [re-frame.core :as re-frame]
    [tsca-webapp.common.view-parts :as common]
    [tsca-webapp.sa-proto.subs :as subs]
+   [tsca-webapp.routes.events :as routes]
    [tsca-webapp.task.events :as task]))
 
 (defn- to-json [obj]
@@ -53,7 +54,7 @@
 (defn- proceed-button [validation]
   [:button.btn.btn-primary
       {:disabled (not (everything-valid? @validation))
-       :on-click #(prn "PROCEED")}
+       :on-click #(re-frame/dispatch [::routes/set-active-panel :clerk-panel])}
    "Proceed"])
 
 (defn- forms [xs]
