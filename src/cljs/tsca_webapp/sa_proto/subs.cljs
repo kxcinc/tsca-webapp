@@ -47,3 +47,20 @@
  ::expected-agreements-assistant
  (fn [db]
    (common/make-array-same-element {:terms assistant-terms} :terms true)))
+
+(re/reg-sub
+ ::screen
+ (fn [db]
+   (:screen db)))
+
+(re/reg-sub
+ ::verifier-state
+ :<- [::screen]
+ (fn [screen]
+   (:state screen)))
+
+(re/reg-sub
+ ::verifier
+ :<- [::screen]
+ (fn [screen]
+   (:verifier screen)))

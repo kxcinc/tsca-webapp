@@ -54,9 +54,12 @@
 (defcommand calculate-address-from-public-key [public-key]
   (aii.TezosUtilities.calculateAddressFromPublicKey public-key))
 
+(defcommand get-spell-verifier [sahash]
+  (aii.Proto0.getSpellVerifier #js {:sahash sahash}))
 
-(defn- str->js [string]
-  (-> string js/JSON.parse))
+(defn generate-spell-verifier [sahash]
+  (-> (get-spell-verifier "MOCK_sahash_proto0_frozen_genesis")
+      (.then #(:verifier %))))
 
 (defcommand simulate-operation [js-network txn js-simprivinfo]
   (aii.Proto0.simulateOperation #js {:network js-network
@@ -86,7 +89,8 @@
 (defcommand check_operation_injection [inj-token]
   (aii.Proto0.checkOperationInjection #js {:injtoken inj-token}))
 
-
+;; (defn- str->js [string]
+;;   (-> string js/JSON.parse))
 
 ;; (-> (simulate
 ;;      #js {:target (clj->js {:spellkind "spellofgenesis"
@@ -127,6 +131,7 @@
          [{:type :provider-info :providerident providerident}] (provider-info providerident)
          [{:type :source-address :public-key pk}] (calculate-address-from-public-key pk)
          [{:type :simulate :ops ops}] (simulate ops)
+         [{:type :spell-verifier :sahash sahash}] (generate-spell-verifier sahash)
          ;; [{:type :re-simulate :adjusted-txn txn :simprivinfo simprivinfo
          ;;   :network network :fee fee}] (confirm-simulation txn simprivinfo network fee)
          :else (js/Promise.reject (str "unknown command" command))))

@@ -8,12 +8,11 @@
    [tsca-webapp.task.events :as task]
    [clojure.string :as s]))
 
-(defn- to-json [obj]
+(defn- to-js [obj]
   (-> (reduce-kv (fn [acc k v]
                    (let [key (s/replace (name k) "-" "_")]
                      (assoc acc key v))) {} obj)
-      clj->js
-      js/JSON.stringify))
+      clj->js))
 
 (defn- build-serializer [xs]
   (fn [obj]
@@ -26,7 +25,7 @@
                              v))))
                 {}
                 xs)
-        to-json)))
+        to-js)))
 
 (defn- build-validator [xs]
   (fn [obj]
@@ -43,23 +42,33 @@
   (->> obj vals
        (every? identity)))
 
+(defn- everything-valid-and-aii? [obj]
+  (and (everything-valid? obj)
+       (get-in obj [:aii-valid :valid?])))
+
 (defn- info [state validation serializer]
-  [:div.panel
-   [:div.panel-body
-    (let [st @state]
-      [:pre
-       (str (try (serializer (:entering st))
-                 (catch :default e "error!")) "\n" (everything-valid? @validation))])
-    [:div "networks:" (str @(re-frame/subscribe [::subs/networks]))]
-    [:div "target spec:" @(re-frame/subscribe [::subs/target-spec])]]])
+  (let [st @state
+        v  @validation
+        aii-valid (:aii-valid v)]
+    [:div.panel
+     [:div.panel-body
+      (if (:valid? aii-valid)
+        [:pre (str (try (js/JSON.stringify (serializer (:entering st)))
+                   (catch :default e "error!")))]
+        [:pre.text-error
+         (if (:message aii-valid)
+           (str "error message from aii: " (:message aii-valid))
+           (str "exception from aii: " (str (:ex aii-valid))))])
+      [:div "networks:" (str @(re-frame/subscribe [::subs/networks]))]
+      [:div "target spec:" @(re-frame/subscribe [::subs/target-spec])]]]))
 
 (defn- proceed-button [state validation serializer]
   [:button.btn.btn-primary
-      {:disabled (not (everything-valid? @validation))
+   {:disabled (not (everything-valid-and-aii? @validation))
        :on-click #(let [networks    @(re-frame/subscribe [::subs/networks])
                         target-spec @(re-frame/subscribe [::subs/target-spec])
                         sahash      @(re-frame/subscribe [::subs/sahash])
-                        spell       (serializer (:entering @state)) ;todo error handling
+                        spell       (js/JSON.stringify (serializer (:entering @state))) ;todo error handling
                         params      {:query-params {:networks  networks
                                                     :for       target-spec
                                                     :spell     spell
@@ -67,12 +76,26 @@
                     (re-frame/dispatch [::routes/set-active-panel :clerk-panel params]))}
    "Proceed"])
 
+(defn- aii-validate [serializer aii-verifier state validation]
+  (try (let [{:keys [valid error]} (-> (:entering @state)
+                                       serializer
+                                       aii-verifier
+                                       (js->clj :keywordize-keys true))]
+         (swap! validation assoc :aii-valid {:valid? valid :message error}))
+       (catch :default e
+         (js/console.error "error from aii" e)
+         (swap! validation assoc :aii-valid {:valid? false :ex e}))))
+
 (defn- forms [xs]
-  (let [validator (build-validator xs)
+  (let [aii-verifier @(re-frame/subscribe [::subs/verifier])
+        validator (build-validator xs)
         validation (reagent/atom (validator {}))
-        state (doto (reagent/atom {})
-                (add-watch :entering (fn [x state old new]
-                                       (reset! validation (validator new)))))]
+        serializer (build-serializer xs)
+        state (reagent/atom {})
+        _ (add-watch state :entering
+                     (fn [x state old new]
+                       (aii-validate serializer aii-verifier state validation)
+                       (swap! validation merge (validator new))))]
     [:div.form-horizontal
      (for [{:keys [label field validate-by invalid-message]} xs]
        [:div.form-group {:key field}
@@ -85,10 +108,9 @@
             invalid-message]
            [common/input state [:entering field]])]])
      [:div.gap]
-     [proceed-button state validation (build-serializer xs)]
+     [proceed-button state validation serializer]
      [:div.gap]
-     [info state validation (build-serializer xs)]
-     ]))
+     [info state validation serializer]]))
 
 (defn- not-empty? [str]
   (not (empty? str)))
@@ -137,5 +159,9 @@
 (defn top []
   (let [agreed? (reagent/atom false)]
     [:div.docs-content
-     [main agreed?]
-     [assistant-term agreed?]]))
+     [assistant-term agreed?]
+     [(fn []
+        (case @(re-frame/subscribe [::subs/verifier-state])
+          :verifier-loading [:h4 "Loading..."]
+          :verifier-loading-error [:h4 "unexpected error!"]
+          [main agreed?]))]]))

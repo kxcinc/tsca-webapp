@@ -3,7 +3,8 @@
   (:require [tsca-webapp.mock :as mock]
             [secretary.core :as secretary]
             [re-frame.core :as re-frame]
-            [tsca-webapp.book.events :as book]))
+            [tsca-webapp.book.events :as book]
+            [tsca-webapp.sa-proto.events :as sa-proto]))
 
 (declare routing-table)
 
@@ -71,7 +72,7 @@
 
   (def routing-table {:home-panel      [top      ::book/open-list]
                       :book-top        [book-top ::book/open]
-                      :spell-assistant [sa-proto0]
+                      :spell-assistant [sa-proto0 ::sa-proto/generate-verifier]
                       :clerk-panel     [chain-clerk]})
   (initial-dispatch))
 
