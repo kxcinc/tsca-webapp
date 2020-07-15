@@ -14,8 +14,9 @@
 
 (re-frame/reg-event-fx
  ::open
- (fn-traced [{:keys [db]} [_ {:keys [bookhash]}]]
-            (let [commands (->> [:book-info :book-charge :book-status
+ (fn-traced [{:keys [db]} _]
+            (let [bookhash (get-in db [:routing-params :bookhash])
+                  commands (->> [:book-info :book-charge :book-status
                                  :book-references]
                                 (map (fn [t] {:type t :bookhash bookhash})))]
               {:db (-> db

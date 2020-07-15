@@ -27,7 +27,10 @@
 
 (re-frame/reg-event-fx
  ::set-active-panel
- (fn-traced [{:keys [db]} [_ active-panel params initialize-event]]
-            {:db (assoc db :active-panel active-panel
-                        :routing-params params)
-             :dispatch  [::task/cancel initialize-event]}))
+ (fn-traced [{:keys [db]} [_ active-panel params initialize-event keep-url? :as event]]
+            (let [cofx {:db (assoc db :active-panel active-panel
+                                   :routing-params params)
+                        :dispatch  [::task/cancel initialize-event]}]
+              (if keep-url?
+                cofx
+                (assoc cofx :rewrite-url {:event event})))))

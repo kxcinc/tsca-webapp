@@ -1,69 +1,69 @@
 (ns tsca-webapp.routes.routes
   (:require-macros [secretary.core :refer [defroute]])
-  (:import [goog History]
-           [goog.history EventType])
-  (:require
-   [clojure.string :as s]
-   [tsca-webapp.mock :as mock]
-   [secretary.core :as secretary]
-   [goog.events :as gevents]
-   [re-frame.core :as re-frame]
-   [tsca-webapp.routes.events :as events]
-   [tsca-webapp.book.events :as book]))
+  (:require [tsca-webapp.mock :as mock]
+            [secretary.core :as secretary]
+            [re-frame.core :as re-frame]
+            [tsca-webapp.book.events :as book]))
 
-;; it must be created initially and only once
-(defonce history (History.))
-
-(defn hook-browser-navigation! []
-  (doto history
-    (gevents/listen
-     EventType/NAVIGATE
-     (fn [event]
-       (secretary/dispatch! (.-token event))))
-    (.setEnabled true)))
-
-(defn- comma-separated [string]
-  (->> (s/split string #",")
-       (filter #(not (empty? %)))))
+(declare routing-table)
 
 (defn- clj->str [o]
   (-> o clj->js js/JSON.stringify))
 
-(defn app-routes []
-  (secretary/set-config! :prefix "#")
-  ;; --------------------
-  ;; define routes here
-  (defroute "/" []
-    (re-frame/dispatch [::events/set-active-panel :home-panel
-                        nil
-                        [::book/open-list]]))
+(defn- url-path []
+  (str js/window.location.pathname js/window.location.search))
 
-  (defroute "/widgets/spellassistant/proto0/frozen/:label" {:as params}
-    (re-frame/dispatch [::events/set-active-panel :spell-assistant params]))
+(defn- initial-dispatch []
+  (secretary/dispatch! (url-path)))
 
-  (defroute "/widgets/chainclerks/tezos" {:as params}
-    (re-frame/dispatch [::events/set-active-panel :clerk-panel params]))
+(defn- page-initial-event [page-key]
+  (let [[_ event-id] (get routing-table page-key)]
+    (when event-id [event-id])))
 
-  (defroute "/clerk/" []
+(defn- dispatch [event-id page-key params]
+  (re-frame/dispatch [event-id page-key params (page-initial-event page-key) true]))
+
+(defn app-routes [event-id]
+  (secretary/set-config! :prefix "")
+
+  (defroute top "/" []
+    (dispatch event-id :home-panel nil ))
+
+  (defroute book-top "/:bookhash" {:as params}
+    (dispatch event-id :book-top params))
+
+  (defroute sa-proto0  "/widgets/spellassistant/proto0/frozen/:label" {:as params}
+    (dispatch event-id :spell-assistant params))
+
+  (defroute chain-clerk "/widgets/chainclerks/tezos" {:as params}
+    (dispatch event-id :clerk-panel params))
+
+  (defroute cheat-clerk "/clerk/" []
     (let [params {:query-params
                   {:networks (clj->str {:netident "testnet" :chainid "NetXjD3HPJJjmcd"})
                    :for mock/target-spec-frozen
                    :spell mock/spell-frozen
                    :sahash mock/sahash-frozen}}]
-      (re-frame/dispatch [::events/set-active-panel :clerk-panel params])))
+      (dispatch event-id :clerk-panel params)))
 
-  (defroute "/about" []
-    (re-frame/dispatch [::events/set-active-panel :about-panel]))
+  (defroute cheat-ledger "/ledger/" []
+    (dispatch event-id :ledger-panel nil))
 
-  (defroute "/ledger" []
-    (re-frame/dispatch [::events/set-active-panel :ledger-panel]))
+  (def routing-table {:home-panel      [top      ::book/open-list]
+                      :book-top        [book-top ::book/open]
+                      :spell-assistant [sa-proto0]
+                      :clerk-panel     [chain-clerk]})
+  (initial-dispatch))
 
-  (defroute "/:bookhash" {:as params}
-    (re-frame/dispatch [::events/set-active-panel :book-top params [::book/open params]]))
+(defn- generate-url [[_ page-key params]]
+  (let [[route-func] (get routing-table page-key)]
+    (if route-func
+      (route-func params)
+      (throw (str "Unknown page:" page-key "(" params ")")))))
 
-  (defroute "/sr/" []
-    (re-frame/dispatch [::events/set-active-panel :spell-runner-panel]))
+(defn rewrite-url [event]
+  (let [url (generate-url event)]
+    (-> js/history
+        (.pushState url nil url))))
 
 
-  ;; --------------------
-  (hook-browser-navigation!))
