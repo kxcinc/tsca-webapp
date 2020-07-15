@@ -1,34 +1,32 @@
 (ns tsca-webapp.sa-proto.subs
   (:require [re-frame.core :as re]
+            [tsca-webapp.mock :as mock]
             [tsca-webapp.common.subs-parts :as common]
             [clojure.string :as s]))
 
 (re/reg-sub
- ::routing-params
- (fn [db]
-   (:routing-params db)))
-
-(re/reg-sub
  ::label
- :<- [::routing-params]
+ :<- [::common/routing-params]
  (fn [params]
    (:label params)))
 
 (re/reg-sub
  ::target-spec
- :<- [::routing-params]
+ :<- [::common/routing-params]
  (fn [params]
    (get-in params [:query-params :for])))
 
 (re/reg-sub
- ::networks
- :<- [::routing-params]
+ ::sahash
+ :<- [::common/routing-params]
  (fn [params]
-   (some-> (get-in params [:query-params :networks])
-           (s/split ","))))
+   mock/sahash-frozen))
 
-
-
+(re/reg-sub
+ ::networks
+ :<- [::common/routing-params]
+ (fn [params]
+   (get-in params [:query-params :networks])))
 
 (def assistant-terms
   ["I have read through carefully all the materials above and completely understand the features, functions, and associated caveats of the described contract template. "

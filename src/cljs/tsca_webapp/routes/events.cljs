@@ -31,4 +31,3 @@
             {:db (assoc db :active-panel active-panel
                         :routing-params params)
              :dispatch  [::task/cancel initialize-event]}))
-

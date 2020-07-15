@@ -3,6 +3,8 @@
   (:import [goog History]
            [goog.history EventType])
   (:require
+   [clojure.string :as s]
+   [tsca-webapp.mock :as mock]
    [secretary.core :as secretary]
    [goog.events :as gevents]
    [re-frame.core :as re-frame]
@@ -20,6 +22,13 @@
        (secretary/dispatch! (.-token event))))
     (.setEnabled true)))
 
+(defn- comma-separated [string]
+  (->> (s/split string #",")
+       (filter #(not (empty? %)))))
+
+(defn- clj->str [o]
+  (-> o clj->js js/JSON.stringify))
+
 (defn app-routes []
   (secretary/set-config! :prefix "#")
   ;; --------------------
@@ -30,8 +39,18 @@
                         [::book/open-list]]))
 
   (defroute "/widgets/spellassistant/proto0/frozen/:label" {:as params}
-    (let [params (merge params {:book :frozen})]
-      (re-frame/dispatch [::events/set-active-panel :spell-assistant params])))
+    (re-frame/dispatch [::events/set-active-panel :spell-assistant params]))
+
+  (defroute "/widgets/chainclerks/tezos" {:as params}
+    (re-frame/dispatch [::events/set-active-panel :clerk-panel params]))
+
+  (defroute "/clerk/" []
+    (let [params {:query-params
+                  {:networks (clj->str {:netident "testnet" :chainid "NetXjD3HPJJjmcd"})
+                   :for mock/target-spec-frozen
+                   :spell mock/spell-frozen
+                   :sahash mock/sahash-frozen}}]
+      (re-frame/dispatch [::events/set-active-panel :clerk-panel params])))
 
   (defroute "/about" []
     (re-frame/dispatch [::events/set-active-panel :about-panel]))
@@ -44,9 +63,6 @@
 
   (defroute "/sr/" []
     (re-frame/dispatch [::events/set-active-panel :spell-runner-panel]))
-
-  (defroute "/clerk/" []
-    (re-frame/dispatch [::events/set-active-panel :clerk-panel]))
 
 
   ;; --------------------

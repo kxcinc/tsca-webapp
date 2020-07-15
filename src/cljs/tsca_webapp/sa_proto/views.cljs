@@ -53,10 +53,19 @@
     [:div "networks:" (str @(re-frame/subscribe [::subs/networks]))]
     [:div "target spec:" @(re-frame/subscribe [::subs/target-spec])]]])
 
-(defn- proceed-button [validation]
+(defn- proceed-button [state validation serializer]
   [:button.btn.btn-primary
       {:disabled (not (everything-valid? @validation))
-       :on-click #(re-frame/dispatch [::routes/set-active-panel :clerk-panel])}
+       :on-click #(let [networks    @(re-frame/subscribe [::subs/networks])
+                        target-spec @(re-frame/subscribe [::subs/target-spec])
+                        sahash      @(re-frame/subscribe [::subs/sahash])
+                        spell       (serializer (:entering @state)) ;todo error handling
+                        params      {:query-params {:networks  networks
+                                                    :for       target-spec
+                                                    :spell     spell
+                                                    :sahash    sahash}}]
+                    ;; todo rewrite url
+                    (re-frame/dispatch [::routes/set-active-panel :clerk-panel params]))}
    "Proceed"])
 
 (defn- forms [xs]
@@ -77,9 +86,10 @@
             invalid-message]
            [common/input state [:entering field]])]])
      [:div.gap]
-     [proceed-button validation]
+     [proceed-button state validation (build-serializer xs)]
      [:div.gap]
-     [info state validation (build-serializer xs)]]))
+     [info state validation (build-serializer xs)]
+     ]))
 
 (defn- not-empty? [str]
   (not (empty? str)))
@@ -100,7 +110,7 @@
   [{:label "Fund Owners" :field :fund-owners :validate-by not-empty?
     :convert :comma-separated
     :invalid-message "required"}
-   {:label "Fund Amount" :field :fund-ammount :validate-by positive-number? :convert :number
+   {:label "Fund Amount" :field :fund-amount :validate-by positive-number? :convert :number
     :invalid-message "positive number ony"}
    {:label "Unfrozen till" :field :unfrozen :validate-by iso8601?
     :invalid-message "ISO8601 format (e.g. 2020-07-02T00:00:00+09 )"}])

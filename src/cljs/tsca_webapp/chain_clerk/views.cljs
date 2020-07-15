@@ -70,12 +70,18 @@
   (->> (map obj fields)
        (every? #(not (or (nil? %) (empty? %))))))
 
+(defn- start-simulating [state]
+  (let [form (get-in @state [:entering])
+        ops @(re-frame/subscribe [::subs/operation])]
+    (re-frame/dispatch [::events/start-simulate form ops])))
+
 (defn- proceed-button [state]
   [:div
    [:button.btn.btn-primary
     {:disabled (not (fields-filled? (get-in @state [:entering])
                                     [:name :e-mail :source-address]))
-     :on-click #(re-frame/dispatch [::events/go-to-next-step])}
+     :on-click #(do (re-frame/dispatch [::events/go-to-next-step])
+                    (start-simulating state))}
     [:i.icon.icon-arrow-right]
     " Proceed"]])
 
@@ -87,9 +93,19 @@
 
 (defn- simulation-block [state]
   [:div
-    [:h3 "Simulating..."]
-    [:div "it costs 15.32 ꜩ"]
-   [check-understand state]])
+   [:h3 @(re-frame/subscribe [::subs/ledger-sim-message])]
+   (when @(re-frame/subscribe [::subs/ledger-sim-finished?])
+     [:div
+      [:div.text-large "it costs " @(re-frame/subscribe [::subs/ledger-sim-total]) " ꜩ"]
+      [:div.columns
+       (mapcat (fn [{:keys [title value]}]
+                 [[:div.column.col-3 {:key (str "k1-" title)} title ":"]
+                  [:div.column.col-3 {:key (str "k2-" title)} [:b value " ꜩ"]]])
+                @(re-frame/subscribe [::subs/ledger-sim-detail]))]
+      [check-understand state]])
+   (when @(re-frame/subscribe [::subs/ledger-sim-error?])
+     [:div
+      [:button.btn.btn-link {:on-click #(start-simulating state)} "Retry"]])])
 
 (defn- operation-block [state]
   [:div

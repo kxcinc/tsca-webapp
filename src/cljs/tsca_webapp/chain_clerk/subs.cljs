@@ -1,5 +1,6 @@
 (ns tsca-webapp.chain-clerk.subs
-  (:require [re-frame.core :as re]))
+  (:require [re-frame.core :as re]
+            [tsca-webapp.common.subs-parts :as common]))
 
 (re/reg-sub
  ::clerk
@@ -40,6 +41,12 @@
  :<- [::ledger]
  (fn [ledger _]
    (get-in ledger [:state :pubkey])))
+
+(re/reg-sub
+ ::ledger-sim-state
+ :<- [::ledger]
+ (fn [ledger _]
+   (get-in ledger [:state :sim])))
 
 (re/reg-sub
  ::ledger-op-state
@@ -99,11 +106,67 @@
    (error-message err)))
 
 (re/reg-sub
+ ::operation
+ :<- [::common/query-params]
+ (fn [{:keys [for spell]}]
+   #js {:target  (js/JSON.parse for)
+        :spell   (js/JSON.parse spell)
+        :network (clj->js {:netident "testnet" :chainid "NetXjD3HPJJjmcd"})}))
+
+(re/reg-sub
+ ::ledger-sim-result
+ (fn [db _]
+   (get-in db [:clerk :ledger :state :sim :result])))
+
+(re/reg-sub
+ ::ledger-sim-total
+ :<- [::ledger-sim-result]
+ (fn [result]
+   (:rawamount result)))
+
+(re/reg-sub
+ ::ledger-sim-detail
+ :<- [::ledger-sim-result]
+ (fn [{:keys [networkfees templatefees]}]
+   (->> [{:title "network(fee)" :value (:fee networkfees)}
+         {:title "network(burn)" :value (:burn networkfees)}
+         {:title "template(agency)"   :value (:agency templatefees)}
+         {:title "template(provider)" :value (:provider templatefees)}]
+        (filter :value))))
+
+(re/reg-sub
+ ::ledger-sim-status
+ :<- [::ledger-sim-state]
+ (fn [state _]
+   (:status state)))
+
+(re/reg-sub
+ ::ledger-sim-finished?
+ :<- [::ledger-sim-status]
+ (fn [state _]
+   (= state :done)))
+
+(re/reg-sub
+ ::ledger-sim-error?
+ :<- [::ledger-sim-status]
+ (fn [state _]
+   (= state :error)))
+
+(re/reg-sub
+ ::ledger-sim-message
+ :<- [::ledger-sim-status]
+ (fn [state _]
+   (case state
+     :loading "Simulating..."
+     :error   "Simulation failed."
+     :done    "Simulation finished."
+     "")))
+
+(re/reg-sub
  ::ledger-op-status
  :<- [::ledger-op-state]
  (fn [state _]
    (:status state)))
-
 (re/reg-sub
  ::ledger-op-loading?
  :<- [::ledger-op-status]

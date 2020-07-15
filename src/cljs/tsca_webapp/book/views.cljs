@@ -1,6 +1,8 @@
 (ns tsca-webapp.book.views
   (:require
    [reagent.core :as reagent]
+   [tsca-webapp.mock :as mock]
+   [clojure.string :as s]
    [re-frame.core :as re-frame]
    [tsca-webapp.book.subs :as subs]
    [tsca-webapp.common.view-parts :as common]))
@@ -114,7 +116,8 @@
     [:div.modal.active
      [:div.modal-container.modal-large
       [:div.modal-body
-       [:iframe {:src "#/widgets/spellassistant/proto0/frozen/genesis"}]]
+       [:iframe {:src (let [query (str "for=" mock/target-spec-frozen)]
+                        (str "#/widgets/spellassistant/proto0/frozen/genesis?" query))}]]
       [:div.modal-footer
        [:button.btn
         {:on-click #(reset! button-visible? false)}
