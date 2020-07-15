@@ -5,13 +5,16 @@
    [clojure.string :as s]
    [re-frame.core :as re-frame]
    [tsca-webapp.book.subs :as subs]
+   [tsca-webapp.routes.events :as routes]
+   [tsca-webapp.routes.routes :as rt]
    [tsca-webapp.common.view-parts :as common]))
 
 (defn- show-book-list []
   [:div
    (for [{:keys [bookhash title synopsis]} @(re-frame/subscribe [::subs/books-summary])]
      [:div.p {:key bookhash}
-      [:a {:href (str "#/" bookhash)}
+      [:a.c-hand {:on-click #(re-frame/dispatch [::routes/set-active-panel :book-top
+                                          {:bookhash bookhash}])}
        [:h3 title]]
       [:div synopsis]])])
 
@@ -116,8 +119,8 @@
     [:div.modal.active
      [:div.modal-container.modal-large
       [:div.modal-body
-       [:iframe {:src (let [query (str "for=" mock/target-spec-frozen)]
-                        (str "#/widgets/spellassistant/proto0/frozen/genesis?" query))}]]
+       [:iframe {:src (rt/sa-proto0 {:label "genesis"
+                                     :query-params {:for mock/target-spec-frozen}})}]]
       [:div.modal-footer
        [:button.btn
         {:on-click #(reset! button-visible? false)}

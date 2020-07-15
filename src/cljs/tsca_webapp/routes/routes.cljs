@@ -7,21 +7,35 @@
 
 (declare routing-table)
 
-(defn- clj->str [o]
-  (-> o clj->js js/JSON.stringify))
-
 (defn- url-path []
   (str js/window.location.pathname js/window.location.search))
 
 (defn- initial-dispatch []
-  (secretary/dispatch! (url-path)))
-
-(defn- page-initial-event [page-key]
-  (let [[_ event-id] (get routing-table page-key)]
-    (when event-id [event-id])))
+  (let [path (url-path)]
+    (.replaceState js/history path nil path)
+    (set! (.-onpopstate js/window)
+          (fn [e]
+            (when-let [path (.-state e)]
+              (secretary/dispatch! path))))
+    (secretary/dispatch! path)))
 
 (defn- dispatch [event-id page-key params]
-  (re-frame/dispatch [event-id page-key params (page-initial-event page-key) true]))
+  (re-frame/dispatch [event-id page-key params true]))
+
+(defn- generate-url [[_ page-key params]]
+  (let [[route-func] (get routing-table page-key)]
+    (if route-func
+      (route-func params)
+      (throw (str "Unknown page:" page-key "(" params ")")))))
+
+(defn rewrite-url [event]
+  (let [url (generate-url event)]
+    (-> js/history
+        (.pushState url nil url))))
+
+(defn page-open-event [page-key]
+  (let [[_ page-open-event-id] (get routing-table page-key)]
+    (when page-open-event-id [page-open-event-id])))
 
 (defn app-routes [event-id]
   (secretary/set-config! :prefix "")
@@ -38,9 +52,15 @@
   (defroute chain-clerk "/widgets/chainclerks/tezos" {:as params}
     (dispatch event-id :clerk-panel params))
 
+  (defroute cheat-sa "/sa/" []
+    (let [params {:query-params
+                  {:networks mock/testnet
+                   :for mock/target-spec-frozen}
+                  :label "genesis"}]
+      (dispatch event-id :spell-assistant params)))
   (defroute cheat-clerk "/clerk/" []
     (let [params {:query-params
-                  {:networks (clj->str {:netident "testnet" :chainid "NetXjD3HPJJjmcd"})
+                  {:networks mock/testnet
                    :for mock/target-spec-frozen
                    :spell mock/spell-frozen
                    :sahash mock/sahash-frozen}}]
@@ -54,16 +74,4 @@
                       :spell-assistant [sa-proto0]
                       :clerk-panel     [chain-clerk]})
   (initial-dispatch))
-
-(defn- generate-url [[_ page-key params]]
-  (let [[route-func] (get routing-table page-key)]
-    (if route-func
-      (route-func params)
-      (throw (str "Unknown page:" page-key "(" params ")")))))
-
-(defn rewrite-url [event]
-  (let [url (generate-url event)]
-    (-> js/history
-        (.pushState url nil url))))
-
 

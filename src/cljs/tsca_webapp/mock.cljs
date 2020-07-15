@@ -3,6 +3,8 @@
 (defn- clj->str [o]
   (-> o clj->js js/JSON.stringify))
 
+(def testnet (clj->str {:netident "testnet" :chainid "NetXjD3HPJJjmcd"}))
+
 (def sahash-frozen "MOCK_sahash_proto0_frozen_genesis")
 
 (def target-spec-frozen (clj->str {:spellkind "spellofgenesis"

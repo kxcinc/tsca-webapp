@@ -2,6 +2,7 @@
   (:require
    [re-frame.core :as re-frame]
    [tsca-webapp.db :as db]
+   [tsca-webapp.routes.routes :as routes]
    [tsca-webapp.task.events :as task]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
@@ -27,8 +28,9 @@
 
 (re-frame/reg-event-fx
  ::set-active-panel
- (fn-traced [{:keys [db]} [_ active-panel params initialize-event keep-url? :as event]]
-            (let [cofx {:db (assoc db :active-panel active-panel
+ (fn-traced [{:keys [db]} [_ active-panel params keep-url? :as event]]
+            (let [initialize-event (routes/page-open-event active-panel)
+                  cofx {:db (assoc db :active-panel active-panel
                                    :routing-params params)
                         :dispatch  [::task/cancel initialize-event]}]
               (if keep-url?

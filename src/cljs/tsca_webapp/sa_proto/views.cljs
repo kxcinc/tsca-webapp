@@ -64,7 +64,6 @@
                                                     :for       target-spec
                                                     :spell     spell
                                                     :sahash    sahash}}]
-                    ;; todo rewrite url
                     (re-frame/dispatch [::routes/set-active-panel :clerk-panel params]))}
    "Proceed"])
 
