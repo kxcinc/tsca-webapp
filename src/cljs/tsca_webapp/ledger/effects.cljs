@@ -47,7 +47,7 @@
 (defn- sign [operation-text]
   (-> (open-app)
       (.then #(.signOperation % tezos-path (str water-mark operation-text) 0))
-      (.then #(.-signature %))))
+      (.then (fn [x] {:txn operation-text :signature (.-signature x)}))))
 
 (defn- error-code [err-key]
   (-> ledger-error .-StatusCodes (oget+ err-key)))

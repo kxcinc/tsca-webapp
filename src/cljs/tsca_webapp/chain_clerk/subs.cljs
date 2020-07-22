@@ -1,5 +1,6 @@
 (ns tsca-webapp.chain-clerk.subs
   (:require [re-frame.core :as re]
+            [tsca-webapp.mock :as mock]
             [tsca-webapp.common.subs-parts :as common]))
 
 (re/reg-sub
@@ -58,7 +59,8 @@
  ::ledger-source-address
  :<- [::ledger-pubkey-state]
  (fn [state _]
-   (:source-address state)))
+   {:source (:source-address state)
+    :public-key (:public-key state)}))
 
 (re/reg-sub
  ::ledger-pubkey-status
@@ -91,13 +93,14 @@
  (fn [state _]
    (:error state)))
 
-(defn- error-message [{:keys [type]}]
-  (case type
-     :time-out "time out"
-     :busy "device busy"
-     :denied-by-user "operation denied"
-     (:transport-status-error :transport-error) ""
-     ""))
+(defn- error-message [{:keys [type reason]}]
+  (or reason
+      (case type
+        :time-out "time out"
+        :busy "device busy"
+        :denied-by-user "operation denied"
+        (:transport-status-error :transport-error) ""
+        "")))
 
 (re/reg-sub
  ::ledger-pubkey-error-message
@@ -106,12 +109,18 @@
    (error-message err)))
 
 (re/reg-sub
+ ::network
+ :<- [::common/query-params]
+ (fn [_]
+   (js/JSON.parse mock/testnet)))
+
+(re/reg-sub
  ::operation
  :<- [::common/query-params]
  (fn [{:keys [for spell]}]
    #js {:target  (js/JSON.parse for)
         :spell   (js/JSON.parse spell)
-        :network (clj->js {:netident "testnet" :chainid "NetXjD3HPJJjmcd"})}))
+        :network (js/JSON.parse mock/testnet)}))
 
 (re/reg-sub
  ::ledger-sim-result
@@ -180,26 +189,80 @@
    (not=  state :done)))
 
 (re/reg-sub
+ ::ledger-op-links
+ :<- [::ledger-op-state]
+ (fn [{:keys [result]}]
+   (concat (when-let [bookapplink (:bookapplink result)]
+             {:label "book app" :link bookapplink})
+           (:explorerlink result))))
+
+(re/reg-sub
  ::ledger-op-message
  :<- [::ledger-op-status]
  (fn [status _]
    (case status
      :finding-ledger "Connect your Ledger and launch Tezos App..."
-     :signing "signing ..."
-     :confirming "Click OK on your Ledger"
+     :confirming "confirming..."
+     :signing "Click OK on your Ledger"
      :sending-op "sending the operation  ..."
+     :waiting-for-done "processing..."
      :done "Your operation done successfully!"
      :error "ERROR!"
      "(unknown state)")))
-
 (re/reg-sub
  ::ledger-op-error
  :<- [::ledger-op-state]
  (fn [state _]
    (:error state)))
-
 (re/reg-sub
  ::ledger-op-error-message
  :<- [::ledger-op-error]
  (fn [err _]
    (error-message err)))
+
+(re/reg-sub
+ ::desc-state
+ (fn [db]
+   (get-in db [:clerk :ledger :state :desc])))
+
+(re/reg-sub
+ ::desc-status
+ :<- [::desc-state]
+ (fn [state]
+   (:status state)))
+
+(re/reg-sub
+ ::description-style
+ :<- [::desc-status]
+ (fn [status]
+   (case status
+     :done "text-strong"
+     :error "text-error"
+     "")))
+
+(re/reg-sub
+ ::description
+ :<- [::desc-state]
+ (fn [{:keys [status description]}]
+   (case status
+     :loading "loading..."
+     :done    description
+     :error   "failed to get description"
+     "")))
+
+(re/reg-sub
+ ::cli-instructions
+ (fn [db]
+   (get-in db [:clerk :ledger :state :inst :instrunctions])))
+
+(re/reg-sub
+ ::form
+ (fn [db]
+   (get-in db [:clerk :form])))
+
+(re/reg-sub
+ ::ledger-available?
+ :<- [::form]
+ (fn [form]
+   (boolean (:public-key form))))
+

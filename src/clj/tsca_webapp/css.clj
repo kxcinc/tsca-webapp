@@ -24,6 +24,7 @@
                    :line-height "1.5em"
                    :display "inline-block"}]
   [:.flexbox      {:display "flex"
+                   :justify-content "center"
                    :flex-wrap "wrap"}
    [:a   {:margin  "0 18px"}]]
   [:.popover-container.popover-large {:width "380px"}]

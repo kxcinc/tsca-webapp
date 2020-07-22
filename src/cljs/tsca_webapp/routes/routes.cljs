@@ -4,7 +4,8 @@
             [secretary.core :as secretary]
             [re-frame.core :as re-frame]
             [tsca-webapp.book.events :as book]
-            [tsca-webapp.sa-proto.events :as sa-proto]))
+            [tsca-webapp.sa-proto.events :as sa-proto]
+            [tsca-webapp.chain-clerk.events :as cc]))
 
 (declare routing-table)
 
@@ -73,6 +74,6 @@
   (def routing-table {:home-panel      [top      ::book/open-list]
                       :book-top        [book-top ::book/open]
                       :spell-assistant [sa-proto0 ::sa-proto/generate-verifier]
-                      :clerk-panel     [chain-clerk]})
+                      :clerk-panel     [chain-clerk ::cc/load-description]})
   (initial-dispatch))
 
