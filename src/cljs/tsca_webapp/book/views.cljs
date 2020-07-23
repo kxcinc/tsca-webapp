@@ -6,6 +6,7 @@
    [re-frame.core :as re-frame]
    [tsca-webapp.book.subs :as subs]
    [tsca-webapp.routes.events :as routes]
+   [tsca-webapp.book.events :as events]
    [tsca-webapp.routes.routes :as rt]
    [tsca-webapp.common.view-parts :as common]))
 
@@ -30,8 +31,18 @@
 (defn- term-block [xs indexed? ratom path switch-label]
   (common/agreement-checkboxes xs indexed? ratom path switch-label))
 
-(defn- agreement-button [agreements agreed? subs-key label]
-  (common/conditional-button agreements subs-key label #(reset! agreed? true)))
+
+(defn- show-modal [modal-atom]
+  (let [url (rt/sa-proto0 {:label "genesis"
+                           :query-params {:for mock/target-spec-frozen}})]
+    (reset! modal-atom {:show true :url url})
+    (re-frame/dispatch [::events/change-iframe-url url])))
+
+(defn- close-modal [modal-atom]
+  (reset! modal-atom {:show false :url nil}))
+
+(defn- agreement-button [agreements modal-atom subs-key label]
+  (common/conditional-button agreements subs-key label #(show-modal modal-atom)))
 
 (defn- info-icon [popover]
   [:div.popover.popover-bottom
@@ -61,7 +72,7 @@
 
 (defn- book-header
   [{:keys [title synopsis basic-facts template-details bookhash tmplversion]}
-   show-assistant-atom]
+   modal-atom]
   (let [charge @(re-frame/subscribe [::subs/book-charge])
         initial-agreements @(re-frame/subscribe [::subs/initial-agreements])
         agreements (reagent/atom initial-agreements)]
@@ -111,27 +122,31 @@
                        @(re-frame/subscribe [::subs/specifictions]))]]]
        [:div.gap]
        [:div.column
-        [agreement-button agreements show-assistant-atom ::subs/expected-agreements
+        [agreement-button agreements modal-atom ::subs/expected-agreements
          [:div "Launch " [:i.icon.icon-upload]]]]])))
 
-(defn- assistnt-modal [button-visible?]
-  (when @button-visible?
-    [:div.modal.active
-     [:div.modal-container.modal-large
-      [:div.modal-body
-       [:iframe {:src (rt/sa-proto0 {:label "genesis"
-                                     :query-params {:for mock/target-spec-frozen}})}]]
-      [:div.modal-footer
-       [:button.btn
-        {:on-click #(reset! button-visible? false)}
-        "close"]]]]))
+(defn- assistnt-modal [modal-atom]
+  (let [{:keys [show url]} @modal-atom]
+    (when show
+      [:div.modal.active
+       [:div.modal-container.modal-large
+        [:div.modal-body
+         [:iframe {:id "assistant-modal"}]]
+        [:div.modal-footer
+         [:button.btn.btn-error
+          {:on-click #(show-modal modal-atom)}
+          "Start over"]
+         " "
+         [:button.btn
+          {:on-click #(close-modal modal-atom)}
+          "Close"]]]])))
 
 (defn book-top []
-  (let [show-modal? (reagent/atom nil)
+  (let [modal (reagent/atom {:show false :url nil})
         loaded      (re-frame/subscribe [::subs/books-loaded?])
         book        (re-frame/subscribe [::subs/book-info])]
     (if @loaded
       [:div
-       [book-header @book show-modal?]
-       [assistnt-modal show-modal?]]
+       [book-header @book modal]
+       [assistnt-modal modal]]
       [:h4 @(re-frame/subscribe [::subs/loading-message])])))

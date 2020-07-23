@@ -49,3 +49,8 @@
             (-> db
                 (assoc :screen {:state :error}))))
 
+(re-frame/reg-event-fx
+ ::change-iframe-url
+ (fn-traced [{:keys [db]} [_ url]]
+            {:dom {:type :iframe :id "assistant-modal" :url url}}))
+

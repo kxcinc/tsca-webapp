@@ -162,6 +162,6 @@
      [assistant-term agreed?]
      [(fn []
         (case @(re-frame/subscribe [::subs/verifier-state])
-          :verifier-loading [:h4 "Loading..."]
+          :verifier-loading nil
           :verifier-loading-error [:h4 "unexpected error!"]
           [main agreed?]))]]))
