@@ -33,6 +33,7 @@
   (let [{:keys [show url]} @modal-atom]
     (when show
       [:div.modal.active
+       [:div.modal-overlay]
        [:div.modal-container.modal-large
         [:div.modal-body
          [:iframe {:id "assistant-modal"}]]

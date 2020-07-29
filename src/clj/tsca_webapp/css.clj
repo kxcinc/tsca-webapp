@@ -12,9 +12,10 @@
                    :overflow-y "none"}
    [:.modal-body  {:flex-grow 1
                    :margin "18px 0 0"
+                   :overflow "hidden"
                    :padding 0}]
    [:iframe        {:width "100%"
-                    :height "99%"}]]
+                    :height "100%"}]]
 
   [:.text-small   {:font-size "80%"}]
   [:.monospace    {:font-family "monospace"}]
