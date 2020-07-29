@@ -5,6 +5,7 @@
    [tsca-webapp.book.views :as book]
    [tsca-webapp.chain-clerk.views :as clerk]
    [tsca-webapp.sa-proto.views :as sa-proto]
+   [tsca-webapp.book-app.views :as book-app]
    [tsca-webapp.spell-assistant.views :as assistant]
    [tsca-webapp.ledger.views :as ledger]))
 
@@ -25,6 +26,7 @@
     :spell-runner-panel [assistant/spell-assistant-top]
     :spell-assistant    [sa-proto/top]
     :clerk-panel        [clerk/clerk-top]
+    :book-app           [book-app/top]
     [:h1 "not found"]))
 
 (defn show-panel [panel-name]

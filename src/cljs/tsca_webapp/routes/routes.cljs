@@ -4,6 +4,7 @@
             [secretary.core :as secretary]
             [re-frame.core :as re-frame]
             [tsca-webapp.book.events :as book]
+            [tsca-webapp.book-app.events :as book-app]
             [tsca-webapp.sa-proto.events :as sa-proto]
             [tsca-webapp.chain-clerk.events :as cc]))
 
@@ -71,9 +72,13 @@
   (defroute cheat-ledger "/ledger/" []
     (dispatch event-id :ledger-panel nil))
 
+  (defroute book-app-proto0 "/proto0/bookapps/:bahash/:sprthash" {:as params}
+    (dispatch event-id :book-app params))
+
   (def routing-table {:home-panel      [top      ::book/open-list]
                       :book-top        [book-top ::book/open]
                       :spell-assistant [sa-proto0 ::sa-proto/generate-verifier]
-                      :clerk-panel     [chain-clerk ::cc/load-description]})
+                      :clerk-panel     [chain-clerk ::cc/load-description]
+                      :book-app        [book-app-proto0 ::book-app/open]})
   (initial-dispatch))
 
