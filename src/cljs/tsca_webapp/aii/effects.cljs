@@ -55,7 +55,7 @@
   (aii.Proto0.getSpellVerifier #js {:sahash sahash}))
 
 (defn generate-spell-verifier [sahash]
-  (-> (get-spell-verifier "MOCK_sahash_proto0_frozen_genesis")
+  (-> (get-spell-verifier sahash)
       (.then #(:verifier %))))
 
 (defcommand simulate-operation [js-network txn js-simprivinfo]

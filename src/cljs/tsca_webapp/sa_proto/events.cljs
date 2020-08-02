@@ -1,12 +1,17 @@
 (ns tsca-webapp.sa-proto.events
   (:require
    [re-frame.core :as re-frame]
+   [cljs.core.match :refer-macros [match]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
 (re-frame/reg-event-fx
  ::generate-verifier
  (fn-traced [{:keys [db]} _]
-            (let [sahash (get-in db [:routing-params :label])]
+            (let [label (get-in db [:routing-params :label])
+                  sahash (case label
+                           "withdraw" "MOCK_sahash_proto0_frozen_withdraw"
+                           "genesis" "MOCK_sahash_proto0_frozen_genesis"
+                           (throw (str "Unknown label:" label)))]
               {:db (-> db
                        (assoc :screen {:state :verifier-loading}))
                :aii {:commands [{:type :spell-verifier :sahash sahash}]

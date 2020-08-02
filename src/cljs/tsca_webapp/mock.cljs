@@ -10,3 +10,8 @@
 (def target-spec-frozen (clj->str {:spellkind "spellofgenesis"
                                    :tmplversion "MOCK_tmplversion_proto0_frozen"}))
 (def spell-frozen "{\"fund_owners\":[\"abc\"],\"fund_amount\":10,\"unfrozen\":\"2020-07-04T00:00:00Z\"}")
+
+(def target-spec-frozen-withdraw
+  (clj->str {:spellkind "spelltospirit"
+             :sprthash "sprthash_proto0_withdraw"
+             :tmplversion "MOCK_tmplversion_proto0_frozen"}))

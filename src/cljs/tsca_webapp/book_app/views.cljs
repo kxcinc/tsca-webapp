@@ -9,7 +9,7 @@
 
 (defn- show-modal [modal-atom]
   (let [url (rt/sa-proto0 {:label "withdraw"
-                           :query-params {:for mock/target-spec-frozen}})]
+                           :query-params {:for mock/target-spec-frozen-withdraw}})]
     (reset! modal-atom {:show true :url url})
     (re-frame/dispatch [::events/change-iframe-url url])))
 
