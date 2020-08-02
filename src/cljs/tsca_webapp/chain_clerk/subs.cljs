@@ -1,6 +1,7 @@
 (ns tsca-webapp.chain-clerk.subs
   (:require [re-frame.core :as re]
             [tsca-webapp.mock :as mock]
+            [clojure.string :as s]
             [tsca-webapp.common.subs-parts :as common]))
 
 (re/reg-sub
@@ -130,8 +131,9 @@
 (re/reg-sub
  ::ledger-sim-total
  :<- [::ledger-sim-result]
- (fn [result]
-   (:rawamount result)))
+ (fn [{:keys [rawamount networkfees templatefees]}]
+   (+ rawamount (:fee networkfees) (:burn networkfees)
+      (:agency templatefees) (:provider templatefees))))
 
 (re/reg-sub
  ::ledger-sim-detail
@@ -237,17 +239,20 @@
  (fn [status]
    (case status
      :done "text-strong"
-     :error "text-error"
+     :error "text-strong"
      "")))
 
 (re/reg-sub
  ::description
  :<- [::desc-state]
- (fn [{:keys [status description]}]
+ :<- [::common/query-params]
+ (fn [[{:keys [status description]} {:keys [for spell sahash]}]]
    (case status
      :loading "loading..."
      :done    description
-     :error   "failed to get description"
+     :error   (s/join "\n" [(str "sahash: " sahash)
+                            (str "target: " for)
+                            (str "spell: " spell)])
      "")))
 
 (re/reg-sub

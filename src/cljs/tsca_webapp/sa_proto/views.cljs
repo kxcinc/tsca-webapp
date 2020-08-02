@@ -52,9 +52,9 @@
         aii-valid (:aii-valid v)]
     [:div.panel
      [:div.panel-body
-      (if (:valid? aii-valid)
-        [:pre (str (try (js/JSON.stringify (serializer (:entering st)))
+      [:pre (str (try (js/JSON.stringify (serializer (:entering st)))
                    (catch :default e "error!")))]
+      (when (not (:valid? aii-valid))
         [:pre.text-error
          (if (:message aii-valid)
            (str "error message from aii: " (:message aii-valid))
@@ -134,7 +134,7 @@
    {:label "Fund Amount" :field :fund-amount :validate-by positive-number? :convert :number
     :invalid-message "positive number ony"}
    {:label "Unfrozen till" :field :unfrozen :validate-by iso8601?
-    :invalid-message "ISO8601 format (e.g. 2020-07-02T00:00:00+09 )"}])
+    :invalid-message "ISO8601 format (e.g. 2020-07-02T00:00:00Z )"}])
 
 (defn main [agreed?]
   [:div {:style {:display (when (not @agreed?) "none")}}

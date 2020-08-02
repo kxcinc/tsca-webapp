@@ -119,12 +119,13 @@
                     (js/Promise.all))))))
 
 (defcommand generate-description [sahash]
-  "What to do")
+  (throw "not implemented"))
 
 (defcommand generate-cli-instructions [sahash spell]
-  [{:prompt "hoge" :line "fuga fuga"}
-   {:prompt "foo" :line "bar bar"}
-   {:prompt "spell" :line (str sahash "\n" spell)}])
+  [{:prompt "dummy"
+    :line (str "tezos-client transfer 10 from "
+               "tz1NQ5Fk7eJCe1zGmngv2GRnJK9G1nEnQahQ"
+               " to KT1CUTjTqf4UMf6c9A8ZA4e1ntWbLVTnvrKG --arg \"0x030292837483\" --fee 0.572 --burn-cap 2.3")}])
 
 (re-frame/reg-fx
  :aii-initialize

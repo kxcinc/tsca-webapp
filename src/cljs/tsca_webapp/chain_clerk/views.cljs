@@ -147,7 +147,8 @@
        [:h4 "use CLI"]
        (if cli-instructions
          (map-indexed (fn [i {:keys [prompt line]}]
-                        [:div {:key (str "instruction-" i)} line])
+                        [:div.panel {:key (str "instruction-" i)}
+                         [:div.panel-body "> " line]])
                       cli-instructions)
          [:div "loading instructions..."])])]])
 
@@ -196,15 +197,18 @@
 (defn clerk-top []
   (let [state (reagent/atom {:entering {}
                              :ledger-pubkey {:show false}})]
-    [:div.columns
-     [:div.column.col-4.col-xl-12
-      [:h4 {:class @(re-frame/subscribe [::subs/description-style])}
-       @(re-frame/subscribe [::subs/description])]]
-     [:div.column.col-8.col-xl-12
-      [:div.card
-       [:div.card-body
-        [:div (class-for-visibility :user-confirmation)
-         [form-block state]]
+    [:div.docs-content [:div.columns
+      [:div.column.col-4.col-xl-12
+       [:div.card
+        [:div.card-header [:h4 "Chain Clerk"]]
+        [:div.card-body
+         [:div.pre {:class @(re-frame/subscribe [::subs/description-style])}
+          @(re-frame/subscribe [::subs/description])]]]]
+      [:div.column.col-8.col-xl-12
+       [:div.card
+        [:div.card-body
+         [:div (class-for-visibility :user-confirmation)
+          [form-block state]]
 
-        [:div (class-for-visibility :doit)
-         [doit-block]]]]]]))
+         [:div (class-for-visibility :doit)
+          [doit-block]]]]]]]))

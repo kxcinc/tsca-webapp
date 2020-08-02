@@ -3,6 +3,8 @@
 
 (defstyles screen
   [:.p            {:margin "0 0 1.2rem"}]
+  [:.pre          {:white-space "pre-wrap"
+                   :word-break  "break-all"}]
   [:.docs-content {:margin "36px"}]
   [:.gap          {:height "16px"}]
   [:.modal-large  {:width "90vw"
