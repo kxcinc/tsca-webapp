@@ -194,10 +194,18 @@
    [:div.gap]
    [proceed-button state]])
 
+(defn- load-default-user-info []
+  (let [{:strs [name email srcaddr]} (-> (js/window.TSCAInternalInterface.Proto0.defaultClerkUserInfo)
+                                               js->clj)]
+    {:name name :e-mail email :source-address srcaddr}))
+
+
+
 (defn clerk-top []
-  (let [state (reagent/atom {:entering {}
+  (let [state (reagent/atom {:entering (load-default-user-info)
                              :ledger-pubkey {:show false}})]
-    [:div.docs-content [:div.columns
+    [:div.docs-content
+     [:div.columns
       [:div.column.col-4.col-xl-12
        [:div.card
         [:div.card-header [:h4 "Chain Clerk"]]
