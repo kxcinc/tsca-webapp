@@ -19,10 +19,10 @@
 (defn- main-page [modal-atom]
   [:div.card
      [:div.card-body
-      (map-indexed (fn [i {:keys [title]}]
-                     [:div.columns {:keys (str "p-" i)}
+      (map-indexed (fn [i {:keys [title value]}]
+                     [:div.columns {:key (str "p-" i)}
                       [:div.col-4 title]
-                      [:div.col-4 "???"]])
+                      [:div.col-4 value]])
                    @(re-frame/subscribe [::subs/parameters]))
       [:div.gap]
       [:button.btn
@@ -49,5 +49,8 @@
 (defn top []
   (let [modal-atom (reagent/atom {:show false :url nil})]
     [:div
-     [main-page modal-atom]
+     (case @(re-frame/subscribe [::subs/status])
+       :loading [:h4 "Loading..."]
+       :error   [:h4.text-error "loading ERROR!"]
+       [main-page modal-atom])
      [assistnt-modal modal-atom]]))
