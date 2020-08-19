@@ -49,7 +49,7 @@
   (aii.Proto0.forgeOperation js-ops-model))
 
 (defcommand calculate-address-from-public-key [public-key]
-  (aii.TezosUtilities.calculateAddressFromPublicKey public-key))
+  (aii.TezosUtilities.calculateAddressFromPublicKeyAsync public-key))
 
 (defcommand get-spell-verifier [sahash]
   (aii.Proto0.getSpellVerifier #js {:sahash sahash}))
