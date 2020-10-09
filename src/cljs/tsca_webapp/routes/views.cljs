@@ -6,24 +6,13 @@
    [tsca-webapp.chain-clerk.views :as clerk]
    [tsca-webapp.sa-proto.views :as sa-proto]
    [tsca-webapp.book-app.views :as book-app]
-   [tsca-webapp.spell-assistant.views :as assistant]
    [tsca-webapp.ledger.views :as ledger]))
-
-(defn about-panel []
-  [:div
-   [:h1 "This is the About Page."]
-
-   [:div
-    [:a {:href "#/"}
-     "go to Home Page"]]])
 
 (defn- panels [panel-name]
   (case panel-name
-    :about-panel        [about-panel]
     :ledger-panel       [ledger/try-ledger]
     :home-panel         [book/home-panel]
     :book-top           [book/book-top]
-    :spell-runner-panel [assistant/spell-assistant-top]
     :spell-assistant    [sa-proto/top]
     :clerk-panel        [clerk/clerk-top]
     :book-app           [book-app/top]
