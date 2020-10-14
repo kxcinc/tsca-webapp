@@ -4,20 +4,30 @@
    [cljs.core.match :refer-macros [match]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [tsca-webapp.task.effects :as task]
+   [oops.core :refer [oset!]]
    ["../common/mock.js" :as mock])
   (:require-macros [tsca-webapp.aii :refer [defcommand]]))
 
 (declare aii)
 (def loading-interval 250)
+;; (def aii-url "https://devapi.tsca.kxc.io/aii-jslib.js")
+(def aii-url "/js/aii-jslib.js")
+
+(defn- load-script [url object-name]
+  (let [el (doto (js/document.createElement "script")
+             (oset! :src url))]
+    (js/document.body.appendChild el)
+    (js/Promise.
+     (fn [resolve reject]
+       (letfn [(trial [] (if-let [obj (aget js/window object-name)]
+                           (resolve obj)
+                           (js/setTimeout trial loading-interval)))]
+         (trial))))))
 
 (defn- initialize []
-  (js/Promise.
-   (fn [resolve reject]
-     (letfn [(trial [] (if js/window.TSCAInternalInterface
-                         (do (def aii js/window.TSCAInternalInterface)
-                             (resolve aii))
-                         (js/setTimeout trial loading-interval)))]
-       (trial)))))
+  (-> (load-script aii-url "TSCAInternalInterface")
+      (.then (fn [obj]
+               (def aii obj)))))
 
 
 (defcommand bookhash-list []

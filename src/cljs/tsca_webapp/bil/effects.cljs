@@ -4,20 +4,29 @@
    [cljs.core.match :refer-macros [match]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [tsca-webapp.task.effects :as task]
+   [oops.core :refer [oset!]]
    ["../common/mock.js" :as mock])
   (:require-macros [tsca-webapp.aii :refer [defcommand]]))
 
 (declare bil)
 (def loading-interval 250)
+(def bil-url "/js/bil-jslib.js")
+
+(defn- load-script [url object-name]
+  (let [el (doto (js/document.createElement "script")
+             (oset! :src url))]
+    (js/document.body.appendChild el)
+    (js/Promise.
+     (fn [resolve reject]
+       (letfn [(trial [] (if-let [obj (aget js/window object-name)]
+                           (resolve obj)
+                           (js/setTimeout trial loading-interval)))]
+         (trial))))))
 
 (defn- initialize []
-  (js/Promise.
-   (fn [resolve reject]
-     (letfn [(trial [] (if js/window.TSCABookappInterface
-                         (do (def bil js/window.TSCABookappInterface)
-                             (resolve bil))
-                         (js/setTimeout trial loading-interval)))]
-       (trial)))))
+  (-> (load-script bil-url "TSCABookappInterface")
+      (.then (fn [obj]
+               (def bil obj)))))
 
 (re-frame/reg-fx
  :bil-initialize
