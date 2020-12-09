@@ -121,40 +121,57 @@
        {:on-click #(start-simulating @(re-frame/subscribe [::subs/form]))}
        "Retry"]])])
 
+(defn- tab-block [state state-key tabs]
+  (let [current (state-key @state)
+        block   (nth (->> tabs
+                          (filter #(= (first %) current))
+                          first)
+                     2)]
+    [:div
+     [:ul.tab.tab-block
+      (for [[key name] tabs]
+        [:li.tab-item {:class (when (= key current) "active")
+                       :key key}
+         [:a {:on-click #(swap! state assoc state-key key)} name]])]
+     [block state]]))
+
+(defn- using-ledger [state]
+  [:div.card-body
+   [:h4 "if you have Ledger device"]
+   (if @(re-frame/subscribe [::subs/ledger-available?])
+     [:button.btn
+      {:on-click #(do
+                    (swap! state assoc-in [:ledger-op :show] true)
+                    (re-frame/dispatch [::task/cancel])
+                    (re-frame/dispatch [::events/start-ledger-op]))}
+      "Proceed with Ledger"]
+     [:button.btn.disabled
+      "You need to load source address by ledger"])
+   [:div.gap]
+   [ledger-op-block state]])
+
+(defn- using-cli [state]
+  (let [cli-instructions @(re-frame/subscribe [::subs/cli-instructions])]
+     [:div.card-body
+      [:h4 "use CLI"]
+      (if cli-instructions
+        (map-indexed (fn [i {:keys [prompt line]}]
+                       [:div.panel {:key (str "instruction-" i)}
+                        [:div.panel-body "> " line]])
+                     cli-instructions)
+        [:div "loading instructions..."])]))
+
 (defn- operation-block [state]
   [:div
    [:div.divider]
-   [:div.columns
-    [:div.column
-     [:div.panel
-      [:div.panel-header
-       [:h4 "if you have Ledger device"]]
-      [:div.panel-body
-       (if @(re-frame/subscribe [::subs/ledger-available?])
-         [:button.btn
-          {:on-click #(do
-                        (swap! state assoc-in [:ledger-op :show] true)
-                        (re-frame/dispatch [::task/cancel])
-                        (re-frame/dispatch [::events/start-ledger-op]))}
-          "Proceed with Ledger"]
-         [:button.btn.disabled
-          "You need to load source address by ledger"])
-       [:div.gap]
-       [ledger-op-block state]]]]
-    [:div.divider-vert {:data-content "OR"}]
-    (let [cli-instructions @(re-frame/subscribe [::subs/cli-instructions])]
-      [:div.column
-       [:h4 "use CLI"]
-       (if cli-instructions
-         (map-indexed (fn [i {:keys [prompt line]}]
-                        [:div.panel {:key (str "instruction-" i)}
-                         [:div.panel-body "> " line]])
-                      cli-instructions)
-         [:div "loading instructions..."])])]])
+   [tab-block state :pay-by
+    [[:ledger "Ledger" using-ledger]
+     [:cli    "use CLI" using-cli]]]])
 
 (defn- doit-block []
   (let [state (reagent/atom {:ledger-op     {:show false}
-                             :agreement false})]
+                             :agreement false
+                             :pay-by :ledger})]
     [(fn []
        [:div
         [simulation-block state]
