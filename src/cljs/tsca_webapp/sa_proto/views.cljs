@@ -97,7 +97,7 @@
                        (aii-validate serializer aii-verifier state validation)
                        (swap! validation merge (validator new))))]
     [:div.form-horizontal
-     (for [{:keys [label field validate-by invalid-message]} xs]
+     (for [{:keys [label field validate-by invalid-message datetime]} xs]
        [:div.form-group {:key field}
         [:div.col-3.col-md-12
          [:label.form-label {:for "input-text"} label]]
@@ -105,7 +105,7 @@
          (if validate-by
            [common/input-with-validate state validation
             [:entering field] [field]
-            invalid-message]
+            invalid-message datetime]
            [common/input state [:entering field]])]])
      [:div.gap]
      [proceed-button state validation serializer]
@@ -134,7 +134,8 @@
    {:label "Fund Amount" :field :fund-amount :validate-by positive-number? :convert :number
     :invalid-message "positive number ony"}
    {:label "Unfrozen till" :field :unfrozen :validate-by iso8601?
-    :invalid-message "ISO8601 format (e.g. 2020-07-02T00:00:00Z )"}])
+    :datetime true
+    :invalid-message "date format (e.g. 2020-07-02 00:00:00 )"}])
 
 (defn main [agreed?]
   [:div {:style {:display (when (not @agreed?) "none")}}

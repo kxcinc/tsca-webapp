@@ -31,4 +31,9 @@
                    :flex-wrap "wrap"}
    [:a   {:margin  "0 18px"}]]
   [:.popover-container.popover-large {:width "380px"}]
-  [:.columns.checkbox {:margin "12px 0"}])
+  [:.columns.checkbox {:margin "12px 0"}]
+  [:.form-input [:input {:text-decoration 'none
+                         :outline 'none
+                         :border 'none
+                         :width "100%"}
+                 ]])

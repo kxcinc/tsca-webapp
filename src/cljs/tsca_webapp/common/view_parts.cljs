@@ -1,7 +1,8 @@
 (ns tsca-webapp.common.view-parts
   (:require
-   [reagent.core]                       ; need this due to override atom
+   [reagent.core]                     ; need this due to override atom
    [re-frame.core :as re-frame]
+   ["react-datetime" :as react-datetime]
    [clojure.string :as string]))
 
 (defn input [state key-path]
@@ -10,14 +11,25 @@
            :value (get-in @state key-path)
            :on-change   #(swap! state assoc-in key-path (-> % .-target .-value))}])
 
-(defn input-with-validate [state validation-state key-path validate-path invalid-message]
-  (let [ok? (get-in @validation-state validate-path)]
+
+(defn Datetime [attr]
+  [:> (.-default react-datetime) attr])
+
+(defn input-with-validate [state validation-state key-path validate-path invalid-message datetime]
+  (let [ok? (get-in @validation-state validate-path)
+        attr {:type "text"
+              :value (get-in @state key-path)}]
     [:div
-     [:input.form-input
-      {:class (if ok? "is-success" "is-error")
-       :type "text"
-       :value (get-in @state key-path)
-       :on-change   #(swap! state assoc-in key-path (-> % .-target .-value))}]
+     (if datetime
+       [Datetime
+        {:onChange #(swap! state assoc-in key-path (.toISOString %))
+         :className (if ok? "form-input is-success" "form-input is-error")
+         :dateFormat "YYYY-MM-DD"
+         :closeOnSelect true
+         :timeFormat "HH:mm:ss"}]
+       [:input.form-input (assoc attr
+                      :class (if ok? "is-success" "is-error")
+                      :on-change #(swap! state assoc-in key-path (-> % .-target .-value)))])
      [:div.form-input-hint (if ok? "　" invalid-message)]]))
 
 (defn input-with-trigger [id trigger-event r-atom]
