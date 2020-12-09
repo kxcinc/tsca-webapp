@@ -10,22 +10,42 @@
    [tsca-webapp.routes.routes :as rt]
    [tsca-webapp.common.view-parts :as common]))
 
-(defn- show-book-list []
+(defn- highlightable [phrase text]
+  (->> (.split text " ")
+       (map-indexed (fn [i word]
+                      [:span {:key (str word "-" i)}
+                       [:span {:class (when (= phrase word) "text-highlight")}
+                        word]
+                       [:span " "]]))
+       doall))
+
+(defn- show-book-list [state]
   [:div
-   (for [{:keys [bookhash title synopsis]} @(re-frame/subscribe [::subs/books-summary])]
-     [:div.p {:key bookhash}
-      [:a.c-hand {:on-click #(re-frame/dispatch [::routes/set-active-panel :book-top
-                                          {:bookhash bookhash}])}
-       [:h3 title]]
-      [:div synopsis]])])
+   (doall (for [{:keys [bookhash title synopsis]} @(re-frame/subscribe [::subs/books-summary])]
+      [:div.p {:key bookhash}
+       [:a.c-hand {:on-click #(re-frame/dispatch [::routes/set-active-panel :book-top
+                                                  {:bookhash bookhash}])}
+        [:h3 title]]
+       [:div (highlightable (:search-text @state) synopsis)]]))])
+
+
 
 (defn home-panel []
-  (let [loaded (re-frame/subscribe [::subs/books-loaded?])]
+  (let [loaded (re-frame/subscribe [::subs/books-loaded?])
+        state (reagent/atom {:search-text ""})]
     [:div.docs-content
-     [:h1 "TSC Agency"]
+     [:div.columns
+      [:div.column.col-8 [:h1 "TSC Agency"]]
+      [:div.column.col-4
+       [:form.form-horizontal
+        [:div.form-group
+         [:div.col-3.col-sm-12
+          [:label.form-label "Search: "]]
+         [:div.col-9.col-sm-12
+          [common/input state [:search-text]]]]]]]
      [:div.divider]
      (if @loaded
-       [show-book-list]
+       [show-book-list state]
        [:h4 @(re-frame/subscribe [::subs/loading-message])])]))
 
 (defn- term-block [xs indexed? ratom path switch-label]
