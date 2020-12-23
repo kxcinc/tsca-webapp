@@ -11,22 +11,21 @@
    [tsca-webapp.common.view-parts :as common]))
 
 (defn- highlightable [phrase text]
-  (->> (.split text " ")
+  (->> (interleave (.split text phrase) (repeat phrase))
        (map-indexed (fn [i word]
-                      [:span {:key (str word "-" i)}
-                       [:span {:class (when (= phrase word) "text-highlight")}
-                        word]
-                       [:span " "]]))
+                      [:span {:key (str "highlightable-" i)
+                              :class (when (= (mod i 2) 1) "text-highlight")} word]))
+       (drop-last)
        doall))
 
 (defn- show-book-list [state]
   [:div
    (doall (for [{:keys [bookhash title synopsis]} @(re-frame/subscribe [::subs/books-summary])]
-      [:div.p {:key bookhash}
-       [:a.c-hand {:on-click #(re-frame/dispatch [::routes/set-active-panel :book-top
-                                                  {:bookhash bookhash}])}
-        [:h3 title]]
-       [:div (highlightable (:search-text @state) synopsis)]]))])
+            [:div.p {:key bookhash}
+             [:a.c-hand {:on-click #(re-frame/dispatch [::routes/set-active-panel :book-top
+                                                        {:bookhash bookhash}])}
+              [:h3 title]]
+             [:div (highlightable (:search-text @state) synopsis)]]))])
 
 
 
