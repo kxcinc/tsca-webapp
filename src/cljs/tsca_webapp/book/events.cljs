@@ -16,8 +16,7 @@
  ::open
  (fn-traced [{:keys [db]} _]
             (let [bookhash (get-in db [:routing-params :bookhash])
-                  commands (->> [:book-info :book-charge :book-status
-                                 :book-references]
+                  commands (->> [:book-info :book-status]
                                 (map (fn [t] {:type t :bookhash bookhash})))]
               {:db (-> db
                        (assoc :screen {:state :loading}))
@@ -34,14 +33,11 @@
 
 (re-frame/reg-event-db
  ::book-info-loaded
- (fn-traced [db [_ [info charge status references ]]]
+ (fn-traced [db [_ [info status]]]
             (-> db
                 (assoc :screen {:state :loaded
                                 :info info
-                                :charge charge
-                                :status status
-                                :references references
-                                }))))
+                                :status status}))))
 
 (re-frame/reg-event-db
  ::book-load-failed

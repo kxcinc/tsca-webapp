@@ -8,7 +8,8 @@
    [tsca-webapp.routes.events :as routes]
    [tsca-webapp.book.events :as events]
    [tsca-webapp.routes.routes :as rt]
-   [tsca-webapp.common.view-parts :as common]))
+   [tsca-webapp.common.view-parts :as common]
+   [tsca-webapp.common.util :as u]))
 
 (defn- highlightable [phrase text]
   (->> (interleave (.split text phrase) (repeat phrase))
@@ -20,7 +21,7 @@
 
 (defn- show-book-list [state]
   [:div
-   (doall (for [{:keys [bookhash title synopsis]} @(re-frame/subscribe [::subs/books-summary])]
+   (doall (for [{:keys [bookhash title synopsis]} @(re-frame/subscribe [::subs/books])]
             [:div.p {:key bookhash}
              [:a.c-hand {:on-click #(re-frame/dispatch [::routes/set-active-panel :book-top
                                                         {:bookhash bookhash}])}
@@ -76,13 +77,16 @@
 (defn- text-with-link-icon [{:keys [value url]}]
   [:div value " " (link-icon url)])
 
-(defn- fee-block [{:keys [provider agency]}]
-  [:div
-   [:div (+ provider agency) " ꜩ in total per origination"]
-   [:div [:span.text-small "( " provider "ꜩ + " agency "ꜩ )"]
-    (info-icon [:div
-                [:div provider " ꜩ payable to the Template Provider, "]
-                [:div agency " ꜩ payable to the Agency"]])]])
+(defn- fee-block [{:keys [provider_charge agency_charge]}]
+  (let [sum (u/format-as-tez (+ provider_charge agency_charge))
+        provider (u/format-as-tez provider_charge)
+        agency (u/format-as-tez agency_charge)]
+    [:div
+     [:div sum " in total per origination"]
+     [:div [:span.text-small "( " provider " + " agency " )"]
+      (info-icon [:div
+                  [:div provider " payable to the Template Provider, "]
+                  [:div agency " payable to the Agency"]])]]))
 
 (defn- term-pair [key-prefix index label]
   [:div.columns {:key (str key-prefix "-" index)}
@@ -90,7 +94,7 @@
    [:div.column.col-11 label]])
 
 (defn- book-header
-  [{:keys [title synopsis basic-facts template-details bookhash tmplversion]}
+  [{:keys [title synopsis basic-facts template-details bookhash tmplhash]}
    modal-atom]
   (let [charge @(re-frame/subscribe [::subs/book-charge])
         initial-agreements @(re-frame/subscribe [::subs/initial-agreements])
@@ -111,14 +115,14 @@
          [:div.gap]
          [:div.columns
           [:div.column.col-xl-12.col-6.text-gray (str "book hash: " bookhash)]
-          [:div.column.col-xl-12.col-6.text-gray (str "template version: " tmplversion)]]]]
+          [:div.column.col-xl-12.col-6.text-gray (str "template hash: " tmplhash)]]]]
        [:div.gap]
        [:div.card
         [:div.card-header [:h2 "Contract Details"]]
         [:div.card-body
          [:h5 "Contract Parameters"]
          (->> (:contract-parameters template-details)
-              (map-indexed (fn [i {:keys [ident desc]}]
+              (map-indexed (fn [i [ident desc]]
                              [:div.columns {:key ident}
                               [:b.column.col-xl-12.col-2.monospace (str " " (inc i) ". " ident)]
                               [:div.column.col-xl-12.col-9 desc]])))
@@ -133,9 +137,9 @@
          [:div.gap]
          [:h5 "Formal Specification"]
          [:div
-          (map-indexed (fn [index {:keys [title synopsis link]}]
+          (map-indexed (fn [index {:keys [title synopsis url]}]
                          (term-pair "specification" index
-                                    [:div [:b [:a {:href link :target "_blank"} title]]
+                                    [:div [:b [:a {:href url :target "_blank"} title]]
                                      " "
                                      synopsis]))
                        @(re-frame/subscribe [::subs/specifictions]))]]]

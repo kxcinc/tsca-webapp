@@ -34,19 +34,13 @@
   (aii.RefMaster.listAdvertizedBooks))
 
 (defcommand book-info [bookhash]
-  (aii.InfoBank.getBook #js {:bookhash bookhash}))
-
-(defcommand book-charge [bookhash]
-  (aii.RefMaster.getBookCharges #js {:bookhash bookhash}))
+  (aii.InfoBank.getBookEntry (js/String bookhash)))
 
 (defcommand book-status [bookhash]
-  (aii.RefMaster.getBookStatus #js {:bookhash bookhash}))
-
-(defcommand book-references [bookhash]
-  (aii.RefMaster.getBookReferences #js {:bookhash bookhash}))
+  (aii.RefMaster.getBookStatus (js/String bookhash)))
 
 (defcommand provider-info [providerident]
-  (aii.RefMaster.getProviderInfo #js {:provider providerident}))
+  (aii.RefMaster.getProviderInfo  (js/String providerident)))
 
 (defn book-info-and-provider [bookhash]
   (-> (book-info bookhash)
@@ -62,7 +56,7 @@
   (aii.TezosUtilities.calculateAddressFromPublicKeyAsync public-key))
 
 (defcommand get-spell-verifier [sahash]
-  (aii.Proto0.getSpellVerifier #js {:sahash sahash}))
+  (aii.Proto0.getSpellVerifier (js/String sahash)))
 
 (defn generate-spell-verifier [sahash]
   (-> (get-spell-verifier sahash)
@@ -121,7 +115,6 @@
 
 (defn all-book-info []
   (-> (bookhash-list)
-      (.then #(:books %))
       (.then (fn [books]
                (->> books
                     (map #(:bookhash %))
@@ -184,9 +177,7 @@
   (match [command]
          [{:type :all-book}] (all-book-info)
          [{:type :book-info :bookhash bookhash}] (book-info-and-provider bookhash)
-         [{:type :book-charge :bookhash bookhash}] (book-charge bookhash)
          [{:type :book-status :bookhash bookhash}] (book-status bookhash)
-         [{:type :book-references :bookhash bookhash}] (book-references bookhash)
          [{:type :provider-info :providerident providerident}] (provider-info providerident)
          [{:type :source-address :public-key pk}] (calculate-address-from-public-key pk)
          [{:type :simulate :ops ops}] (simulate ops)

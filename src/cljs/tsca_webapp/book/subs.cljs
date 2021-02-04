@@ -9,16 +9,6 @@
  (fn [db _]
    (get-in db [:screen :books])))
 
-(defn- parse-summary [{:keys [bookhash basicinfo]}]
-  (-> basicinfo
-      (assoc :bookhash bookhash)))
-
-(re-frame/reg-sub
- ::books-summary
- :<- [::books]
- (fn [books]
-   (->> books (map parse-summary))))
-
 (re-frame/reg-sub
  ::books-loading-state
  (fn [db _]
@@ -46,16 +36,16 @@
  (fn [db]
    (:routing-params db)))
 
-(defn- parse-book-detail [{:keys [bookhash tmplversion basicinfo detailedinfo
-                                  provider-detail]}]
-  {:title (:title basicinfo)
-   :synopsis (:synopsis basicinfo)
-   :provider provider-detail
-   :template-details {:contract-parameters (:parameters detailedinfo)
-                      :contract-terms (:englishterms detailedinfo)
-                      :caveats        (:caveats detailedinfo)}
+(defn- parse-book-detail [{:keys [bookhash title synopsis provider-detail tmplhash
+                                  contract_parameters_en contract_terms_en contract_caveats_en]}]
+  {:title title
+   :synopsis synopsis
+   :provider-detail provider-detail
+   :template-details {:contract-parameters contract_parameters_en
+                      :contract-terms contract_terms_en
+                      :caveats        contract_caveats_en}
    :bookhash bookhash
-   :tmplversion tmplversion})
+   :tmplhash tmplhash})
 
 (re-frame/reg-sub
  ::screen
@@ -72,7 +62,7 @@
  ::book-charge
  :<- [::screen]
  (fn [screen _]
-   (:charge screen)))
+   (:charges (:status screen))))
 
 (re-frame/reg-sub
  ::book-status
@@ -84,14 +74,14 @@
  ::book-contract-complexity
  :<- [::book-status]
  (fn [status _]
-   {:value (:contract_complexity status)
+   {:value (get-in status [:review_results :contract_complexity])
     :url help-link-of-status}))
 
 (re-frame/reg-sub
  ::book-certification-status
  :<- [::book-status]
  (fn [status _]
-   {:value (:certification_status status)
+   {:value (get-in status [:review_results :certification_status])
     :url help-link-of-status}))
 
 (defn- make-initial-array [xs]
@@ -100,16 +90,16 @@
 (re-frame/reg-sub
  ::initial-agreements
  :<- [::book-info]
- (fn [{:keys [template-details]} _]
-   {:contract-terms (make-initial-array (:contract-terms template-details))
-    :caveats (make-initial-array        (:caveats template-details))}))
+ (fn [{:keys [contract_parameters_en contract_caveats_en]} _]
+   {:contract-terms (make-initial-array contract_parameters_en)
+    :caveats (make-initial-array        contract_caveats_en)}))
 
 (re-frame/reg-sub
  ::book-provider
  :<- [::book-info]
- (fn [{:keys [provider]} _]
-   {:value (:displayname provider)
-    :url (:website provider)}))
+ (fn [{:keys [provider-detail]} _]
+   {:value (:display_name provider-detail)
+    :url (:website provider-detail)}))
 
 (re-frame/reg-sub
  ::expected-agreements
@@ -121,6 +111,6 @@
 (re-frame/reg-sub
  ::specifictions
  :<- [::screen]
- (fn [screen _]
-   (get-in screen [:references :specifications])))
+ (fn [screen]
+   (get-in screen [:info :specifications])))
 
