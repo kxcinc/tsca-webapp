@@ -1,8 +1,6 @@
 (ns tsca-webapp.task.effects
   (:require
-   [re-frame.core :as re-frame]
-   [day8.re-frame.tracing :refer-macros [fn-traced]]
-   ["../common/mock.js" :as mock]))
+   [re-frame.core :as re-frame]))
 
 (defonce processes (atom {}))
 
@@ -61,19 +59,3 @@
  (fn [{:keys [callback]}]
    (cancel-all)
    (when callback (re-frame/dispatch callback))))
-
-(re-frame/reg-fx
- :sleep
- (fn [{:keys [success-id cancel-id return-value sec task-id]}]
-   (let [x (mock/cancelableSleep (* 1000 sec) return-value)]
-     (register-process task-id
-                       x.promise success-id nil
-                       x.cancel cancel-id))))
-
-(re-frame/reg-fx
- :sleep-force
- (fn [{:keys [success-id cancel-id return-value sec task-id]}]
-   (register-process task-id
-                     (mock/sleep (* 1000 sec) return-value) success-id nil
-                     nil cancel-id)))
-

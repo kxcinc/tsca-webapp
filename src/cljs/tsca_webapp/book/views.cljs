@@ -3,12 +3,14 @@
    [reagent.core :as reagent]
    [tsca-webapp.mock :as mock]
    [clojure.string :as s]
-   [re-frame.core :as re-frame]
+   [re-frame.core :as r]
    [tsca-webapp.book.subs :as subs]
    [tsca-webapp.routes.events :as routes]
    [tsca-webapp.book.events :as events]
    [tsca-webapp.routes.routes :as rt]
-   [tsca-webapp.common.view-parts :as common]))
+   [tsca-webapp.common.view-parts :as common]
+   [tsca-webapp.common.util :as u]
+   [tsca-webapp.aii.effects :as aii-effects]))
 
 (defn- highlightable [phrase text]
   (->> (interleave (.split text phrase) (repeat phrase))
@@ -20,42 +22,68 @@
 
 (defn- show-book-list [state]
   [:div
-   (doall (for [{:keys [bookhash title synopsis]} @(re-frame/subscribe [::subs/books-summary])]
+   (doall (for [{:keys [bookhash title synopsis]} @(r/subscribe [::subs/books])]
             [:div.p {:key bookhash}
-             [:a.c-hand {:on-click #(re-frame/dispatch [::routes/set-active-panel :book-top
+             [:a.c-hand {:on-click #(r/dispatch [:set-active-panel :book-top
                                                         {:bookhash bookhash}])}
               [:h3 title]]
              [:div (highlightable (:search-text @state) synopsis)]]))])
 
-
+(defn- open-bookapp [spirit-hash]
+  (when-not (empty? spirit-hash)
+    (some-> spirit-hash
+            aii-effects/bookapp-url
+            (.then #(js/window.open (.-url %))))))
+(defn- open-bookapp-button [state]
+  (fn []
+    (let [spirit-hash (:spirit-hash @state)]
+      [:span.btn {:class (when-not (empty? spirit-hash)
+                           "bg-primary")
+                  :on-click #(open-bookapp spirit-hash)}
+       "Open app page"])))
 
 (defn home-panel []
-  (let [loaded (re-frame/subscribe [::subs/books-loaded?])
-        state (reagent/atom {:search-text ""})]
+  (let [loaded (r/subscribe [::subs/books-loaded?])
+        state (reagent/atom {:search-text ""
+                             :spirit-hash ""})]
     [:div.docs-content
+     [:h1 "TSC Agency"]
+     [:form.form-horizontal
+      [:div.form-group
+       [:div.col-1.col-sm-12
+        [:label "Spirit Hash"]]
+       [:div.col-3.col-sm-12
+        [common/input state [:spirit-hash]]]
+       [:div.col-3.col-sm-12
+        [:span "　"]
+        [open-bookapp-button state]]]]
+     [:hr]
      [:div.columns
-      [:div.column.col-8 [:h1 "TSC Agency"]]
-      [:div.column.col-4
+      [:div.column.col-6 ]
+      [:div.column.col-6
        [:form.form-horizontal
         [:div.form-group
          [:div.col-3.col-sm-12
-          [:label.form-label "Search: "]]
-         [:div.col-9.col-sm-12
+          [:label.form-label.text-right "Search:　"]]
+         [:div.col-8.col-sm-12
           [common/input state [:search-text]]]]]]]
      [:div.divider]
      (if @loaded
        [show-book-list state]
-       [:h4 @(re-frame/subscribe [::subs/loading-message])])]))
+       [:h4 @(r/subscribe [::subs/loading-message])])]))
 
 (defn- term-block [xs indexed? ratom path switch-label]
   (common/agreement-checkboxes xs indexed? ratom path switch-label))
 
 
 (defn- show-modal [modal-atom]
-  (let [url (rt/sa-proto0 {:label "genesis"
-                           :query-params {:for mock/target-spec-frozen}})]
+  (let [url (rt/spell-assistant
+             {:label "genesis"
+              :tmplhash mock/tmplhash-frozen
+              :query-params {:networks mock/testnet
+                             :for mock/target-spec-frozen}})]
     (reset! modal-atom {:show true :url url})
-    (re-frame/dispatch [::events/change-iframe-url url])))
+    (r/dispatch [::events/change-iframe-url url])))
 
 (defn- close-modal [modal-atom]
   (reset! modal-atom {:show false :url nil}))
@@ -76,25 +104,34 @@
 (defn- text-with-link-icon [{:keys [value url]}]
   [:div value " " (link-icon url)])
 
-(defn- fee-block [{:keys [provider agency]}]
-  [:div
-   [:div (+ provider agency) " ꜩ in total per origination"]
-   [:div [:span.text-small "( " provider "ꜩ + " agency "ꜩ )"]
-    (info-icon [:div
-                [:div provider " ꜩ payable to the Template Provider, "]
-                [:div agency " ꜩ payable to the Agency"]])]])
+(defn- fee-block [{:keys [provider_charge agency_charge]}]
+  (let [sum (u/format-as-tez (+ provider_charge agency_charge))
+        provider (u/format-as-tez provider_charge)
+        agency (u/format-as-tez agency_charge)]
+    [:div
+     [:div sum " in total per origination"]
+     [:div [:span.text-small "( " provider " + " agency " )"]
+      (info-icon [:div
+                  [:div provider " payable to the Template Provider, "]
+                  [:div agency " payable to the Agency"]])]]))
 
 (defn- term-pair [key-prefix index label]
   [:div.columns {:key (str key-prefix "-" index)}
    [:div.column.col-1.text-right "-"]
    [:div.column.col-11 label]])
 
-(defn- book-header
-  [{:keys [title synopsis basic-facts template-details bookhash tmplversion]}
-   modal-atom]
-  (let [charge @(re-frame/subscribe [::subs/book-charge])
-        initial-agreements @(re-frame/subscribe [::subs/initial-agreements])
-        agreements (reagent/atom initial-agreements)]
+(defn- book-header [modal-atom]
+  (let [title               @(r/subscribe [::subs/book-title])
+        synopsis            @(r/subscribe [::subs/book-synopsis])
+        charge              @(r/subscribe [::subs/book-charge])
+        contract-terms      @(r/subscribe [::subs/contract-terms])
+        contract-parameters @(r/subscribe [::subs/contract-parameters])
+        caveats             @(r/subscribe [::subs/caveats])
+        bookhash            @(r/subscribe [::subs/bookhash])
+        tmplhash            @(r/subscribe [::subs/tmplhash])
+        initial-agreements  @(r/subscribe [::subs/initial-agreements])
+        agreements          (reagent/atom initial-agreements)
+        specification       @(r/subscribe [::subs/specifictions])]
     (fn []
       [:div.docs-content
        [:h1 "Book: " title]
@@ -104,41 +141,41 @@
         [:div.card-header [:h2 "Basic Facts"]]
         [:div.card-body
          [:div.columns
-          [:div.column.col-2.text-bold "Provider"] [:div.column.col-4 (text-with-link-icon @(re-frame/subscribe [::subs/book-provider]))]
-          [:div.column.col-2.text-bold "Contract Complexity"] [:div.column.col-4 (text-with-link-icon @(re-frame/subscribe [::subs/book-contract-complexity]))]
-          [:div.column.col-2.text-bold "Certification Status"] [:div.column.col-4 (text-with-link-icon @(re-frame/subscribe [::subs/book-certification-status]))]
+          [:div.column.col-2.text-bold "Provider"] [:div.column.col-4 (text-with-link-icon @(r/subscribe [::subs/book-provider]))]
+          [:div.column.col-2.text-bold "Contract Complexity"] [:div.column.col-4 (text-with-link-icon @(r/subscribe [::subs/book-contract-complexity]))]
+          [:div.column.col-2.text-bold "Certification Status"] [:div.column.col-4 (text-with-link-icon @(r/subscribe [::subs/book-certification-status]))]
           [:div.column.col-2.text-bold "Template Fees"] [:div.column.col-4 (fee-block charge)]]
          [:div.gap]
          [:div.columns
           [:div.column.col-xl-12.col-6.text-gray (str "book hash: " bookhash)]
-          [:div.column.col-xl-12.col-6.text-gray (str "template version: " tmplversion)]]]]
+          [:div.column.col-xl-12.col-6.text-gray (str "template hash: " tmplhash)]]]]
        [:div.gap]
        [:div.card
         [:div.card-header [:h2 "Contract Details"]]
         [:div.card-body
          [:h5 "Contract Parameters"]
-         (->> (:contract-parameters template-details)
-              (map-indexed (fn [i {:keys [ident desc]}]
+         (->> contract-parameters
+              (map-indexed (fn [i [ident desc]]
                              [:div.columns {:key ident}
                               [:b.column.col-xl-12.col-2.monospace (str " " (inc i) ". " ident)]
                               [:div.column.col-xl-12.col-9 desc]])))
          [:div.gap]
          [:h5 "Contract Terms in English"]
-         (term-block (:contract-terms template-details) true
+         (term-block contract-terms true
                      agreements :contract-terms "I understand")
          [:div.gap]
          [:h5 "Caveats"]
-         (term-block (:caveats template-details) false
+         (term-block caveats false
                      agreements :caveats "I understand")
          [:div.gap]
          [:h5 "Formal Specification"]
          [:div
-          (map-indexed (fn [index {:keys [title synopsis link]}]
+          (map-indexed (fn [index {:keys [title synopsis url]}]
                          (term-pair "specification" index
-                                    [:div [:b [:a {:href link :target "_blank"} title]]
+                                    [:div [:b [:a {:href url :target "_blank"} title]]
                                      " "
                                      synopsis]))
-                       @(re-frame/subscribe [::subs/specifictions]))]]]
+                       specification)]]]
        [:div.gap]
        [:div.column
         [agreement-button agreements modal-atom ::subs/expected-agreements
@@ -162,11 +199,9 @@
           "Close"]]]])))
 
 (defn book-top []
-  (let [modal (reagent/atom {:show false :url nil})
-        loaded      (re-frame/subscribe [::subs/books-loaded?])
-        book        (re-frame/subscribe [::subs/book-info])]
-    (if @loaded
+  (let [modal  (reagent/atom {:show false :url nil})]
+    (if @(r/subscribe [::subs/books-loaded?])
       [:div
-       [book-header @book modal]
+       [book-header modal]
        [assistnt-modal modal]]
-      [:h4 @(re-frame/subscribe [::subs/loading-message])])))
+      [:h4 @(r/subscribe [::subs/loading-message])])))

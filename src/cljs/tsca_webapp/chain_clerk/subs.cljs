@@ -2,6 +2,7 @@
   (:require [re-frame.core :as re]
             [tsca-webapp.mock :as mock]
             [clojure.string :as s]
+            [tsca-webapp.common.util :as u]
             [tsca-webapp.common.subs-parts :as common]))
 
 (re/reg-sub
@@ -113,15 +114,15 @@
  ::network
  :<- [::common/query-params]
  (fn [_]
-   (js/JSON.parse mock/testnet)))
+   (u/str->json mock/testnet)))
 
 (re/reg-sub
  ::operation
  :<- [::common/query-params]
- (fn [{:keys [for spell]}]
-   #js {:target  (js/JSON.parse for)
-        :spell   (js/JSON.parse spell)
-        :network (js/JSON.parse mock/testnet)}))
+ (fn [{:keys [for spell networks]}]
+   #js {:target  (u/str->json for)
+        :spell   spell
+        :network (u/str->json networks)}))
 
 (re/reg-sub
  ::ledger-sim-result
@@ -129,21 +130,23 @@
    (get-in db [:clerk :ledger :state :sim :result])))
 
 (re/reg-sub
- ::ledger-sim-total
- :<- [::ledger-sim-result]
- (fn [{:keys [rawamount networkfees templatefees]}]
-   (+ rawamount (:fee networkfees) (:burn networkfees)
-      (:agency templatefees) (:provider templatefees))))
-
-(re/reg-sub
  ::ledger-sim-detail
  :<- [::ledger-sim-result]
- (fn [{:keys [networkfees templatefees]}]
-   (->> [{:title "network(fee)" :value (:fee networkfees)}
-         {:title "network(burn)" :value (:burn networkfees)}
-         {:title "template(agency)"   :value (:agency templatefees)}
-         {:title "template(provider)" :value (:provider templatefees)}]
-        (filter :value))))
+ (fn [{:keys [simulation_output]}]
+   simulation_output))
+
+
+(re/reg-sub
+ ::ledger-sim-cli-description
+ :<- [::ledger-sim-result]
+ (fn [{:keys [instruction]}]
+   instruction))
+
+(re/reg-sub
+ ::ledger-sim-book-app
+ :<- [::ledger-sim-result]
+ (fn [{:keys [book-app]}]
+   book-app))
 
 (re/reg-sub
  ::ledger-sim-status
@@ -191,12 +194,16 @@
    (not=  state :done)))
 
 (re/reg-sub
+ ::ledger-op-sprit-hash
+ :<- [::ledger-sim-result]
+ (fn [{:keys [sprthash]}]
+   sprthash))
+
+(re/reg-sub
  ::ledger-op-links
- :<- [::ledger-op-state]
- (fn [{:keys [result]}]
-   (concat (when-let [bookapplink (:bookapplink result)]
-             {:label "book app" :link bookapplink})
-           (:explorerlink result))))
+ :<- [::ledger-sim-result]
+ (fn [{:keys [book-app]}]
+   [{:label (:title book-app) :link (:url book-app)}]))
 
 (re/reg-sub
  ::ledger-op-message
@@ -256,11 +263,6 @@
      "")))
 
 (re/reg-sub
- ::cli-instructions
- (fn [db]
-   (get-in db [:clerk :ledger :state :inst :instrunctions])))
-
-(re/reg-sub
  ::form
  (fn [db]
    (get-in db [:clerk :form])))
@@ -270,4 +272,3 @@
  :<- [::form]
  (fn [form]
    (boolean (:public-key form))))
-

@@ -27,7 +27,7 @@
             (assoc db :aii {:state :error})))
 
 (re-frame/reg-event-fx
- ::set-active-panel
+ :set-active-panel
  (fn-traced [{:keys [db]} [_ active-panel params keep-url? :as event]]
             (let [initialize-event (routes/page-open-event active-panel)
                   cofx {:db (assoc db :active-panel active-panel

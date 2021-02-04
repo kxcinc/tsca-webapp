@@ -9,16 +9,6 @@
  (fn [db _]
    (get-in db [:screen :books])))
 
-(defn- parse-summary [{:keys [bookhash basicinfo]}]
-  (-> basicinfo
-      (assoc :bookhash bookhash)))
-
-(re-frame/reg-sub
- ::books-summary
- :<- [::books]
- (fn [books]
-   (->> books (map parse-summary))))
-
 (re-frame/reg-sub
  ::books-loading-state
  (fn [db _]
@@ -39,23 +29,18 @@
      :error   "load failed."
      (str "unknown state: " state))))
 
-
-
-(re-frame/reg-sub
- ::routing-params
- (fn [db]
-   (:routing-params db)))
-
-(defn- parse-book-detail [{:keys [bookhash tmplversion basicinfo detailedinfo
-                                  provider-detail]}]
-  {:title (:title basicinfo)
-   :synopsis (:synopsis basicinfo)
-   :provider provider-detail
-   :template-details {:contract-parameters (:parameters detailedinfo)
-                      :contract-terms (:englishterms detailedinfo)
-                      :caveats        (:caveats detailedinfo)}
+(defn- parse-book-detail [{:keys [bookhash title synopsis provider-detail tmplhash
+                                  contract_parameters_en contract_terms_en contract_caveats_en
+                                  specifications]}]
+  {:title title
+   :synopsis synopsis
+   :provider-detail provider-detail
+   :template-details {:contract-parameters contract_parameters_en
+                      :contract-terms contract_terms_en
+                      :caveats        contract_caveats_en}
    :bookhash bookhash
-   :tmplversion tmplversion})
+   :tmplhash tmplhash
+   :specifications specifications})
 
 (re-frame/reg-sub
  ::screen
@@ -69,10 +54,34 @@
    (-> screen :info parse-book-detail)))
 
 (re-frame/reg-sub
+ ::book-title
+ :<- [::book-info]
+ (fn [{:keys [title]} _]
+   title))
+
+(re-frame/reg-sub
+ ::book-synopsis
+ :<- [::book-info]
+ (fn [{:keys [synopsis]} _]
+   synopsis))
+
+(re-frame/reg-sub
+ ::bookhash
+ :<- [::book-info]
+ (fn [{:keys [bookhash]} _]
+   bookhash))
+
+(re-frame/reg-sub
+ ::tmplhash
+ :<- [::book-info]
+ (fn [{:keys [tmplhash]} _]
+   tmplhash))
+
+(re-frame/reg-sub
  ::book-charge
  :<- [::screen]
  (fn [screen _]
-   (:charge screen)))
+   (:charges (:status screen))))
 
 (re-frame/reg-sub
  ::book-status
@@ -84,15 +93,33 @@
  ::book-contract-complexity
  :<- [::book-status]
  (fn [status _]
-   {:value (:contract_complexity status)
+   {:value (get-in status [:review_results :contract_complexity])
     :url help-link-of-status}))
 
 (re-frame/reg-sub
  ::book-certification-status
  :<- [::book-status]
  (fn [status _]
-   {:value (:certification_status status)
+   {:value (get-in status [:review_results :certification_status])
     :url help-link-of-status}))
+
+(re-frame/reg-sub
+ ::contract-terms
+ :<- [::book-info]
+ (fn [{:keys [template-details]} _]
+   (:contract-terms template-details)))
+
+(re-frame/reg-sub
+ ::contract-parameters
+ :<- [::book-info]
+ (fn [{:keys [template-details]} _]
+   (:contract-parameters template-details)))
+
+(re-frame/reg-sub
+ ::caveats
+ :<- [::book-info]
+ (fn [{:keys [template-details]} _]
+   (:caveats template-details)))
 
 (defn- make-initial-array [xs]
   (mapv #(-> % :mandatory_consensus not) xs))
@@ -107,20 +134,21 @@
 (re-frame/reg-sub
  ::book-provider
  :<- [::book-info]
- (fn [{:keys [provider]} _]
-   {:value (:displayname provider)
-    :url (:website provider)}))
+ (fn [{:keys [provider-detail]} _]
+   {:value (:display_name provider-detail)
+    :url (:website provider-detail)}))
 
 (re-frame/reg-sub
  ::expected-agreements
- :<- [::book-info]
- (fn [{:keys [template-details]} _]
-   (merge (common/make-array-same-element template-details :contract-terms true)
-          (common/make-array-same-element template-details :caveats true))))
+ :<- [::contract-terms]
+ :<- [::caveats]
+ (fn [[contract_terms caveats] _]
+   {:contract-terms (mapv (fn [_] true) contract_terms)
+    :caveats        (mapv (fn [_] true) caveats)}))
 
 (re-frame/reg-sub
  ::specifictions
- :<- [::screen]
- (fn [screen _]
-   (get-in screen [:references :specifications])))
+ :<- [::book-info]
+ (fn [{:keys [specifications]}]
+   specifications))
 

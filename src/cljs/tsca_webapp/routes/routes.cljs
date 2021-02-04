@@ -4,8 +4,7 @@
             [secretary.core :as secretary]
             [re-frame.core :as re-frame]
             [tsca-webapp.book.events :as book]
-            [tsca-webapp.book-app.events :as book-app]
-            [tsca-webapp.sa-proto.events :as sa-proto]
+            [tsca-webapp.spell-assistant.events :as sa]
             [tsca-webapp.chain-clerk.events :as cc]))
 
 (declare routing-table)
@@ -49,8 +48,11 @@
   (defroute book-top "/:bookhash" {:as params}
     (dispatch event-id :book-top params))
 
-  (defroute sa-proto0  "/widgets/spellassistant/proto0/frozen/:label" {:as params}
+  (defroute spell-assistant  "/widgets/spellassistant/:tmplhash/:label" {:as params}
     (dispatch event-id :spell-assistant params))
+  (defroute spell-assistant-with-cors  "/widgets/o/spellassistant/:tmplhash/:label" {:as params}
+    ;; don't dispatch :spell-assistant here to generete url from key
+    (dispatch event-id :spell-assistant-with-cors params))
 
   (defroute chain-clerk "/widgets/chainclerks/tezos" {:as params}
     (dispatch event-id :clerk-panel params))
@@ -58,27 +60,25 @@
   (defroute cheat-sa "/sa/" []
     (let [params {:query-params
                   {:networks mock/testnet
-                   :for mock/target-spec-frozen}
-                  :label "genesis"}]
+                   :for      mock/target-spec-frozen}
+                  :label    "genesis"
+                  :tmplhash mock/tmplhash-frozen}]
       (dispatch event-id :spell-assistant params)))
   (defroute cheat-clerk "/clerk/" []
     (let [params {:query-params
                   {:networks mock/testnet
-                   :for mock/target-spec-frozen
-                   :spell mock/spell-frozen
-                   :sahash mock/sahash-frozen}}]
+                   :for      mock/target-spec-frozen
+                   :spell    mock/spell-frozen
+                   :sahash   mock/sahash-frozen}}]
       (dispatch event-id :clerk-panel params)))
 
   (defroute cheat-ledger "/ledger/" []
     (dispatch event-id :ledger-panel nil))
 
-  (defroute book-app-proto0 "/proto0/bookapps/:bahash/:sprthash" {:as params}
-    (dispatch event-id :book-app params))
-
-  (def routing-table {:home-panel      [top      ::book/open-list]
-                      :book-top        [book-top ::book/open]
-                      :spell-assistant [sa-proto0 ::sa-proto/generate-verifier]
-                      :clerk-panel     [chain-clerk ::cc/load-description]
-                      :book-app        [book-app-proto0 ::book-app/open]})
+  (def routing-table {:home-panel                [top      ::book/open-list]
+                      :book-top                  [book-top ::book/open]
+                      :spell-assistant           [spell-assistant ::sa/generate-verifier]
+                      :spell-assistant-with-cors [spell-assistant-with-cors ::sa/generate-verifier]
+                      :clerk-panel               [chain-clerk ::cc/load-description]})
   (initial-dispatch))
 

@@ -7,7 +7,7 @@
 (re-frame/reg-fx
  :routing
  (fn [_]
-   (routes/app-routes ::events/set-active-panel)))
+   (routes/app-routes :set-active-panel)))
 
 (re-frame/reg-fx
  :rewrite-url

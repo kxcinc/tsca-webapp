@@ -33,6 +33,8 @@
   [:.popover-container.popover-large {:width "380px"}]
   [:.columns.checkbox {:margin "12px 0"}]
   [:.text-highlight {:background "yellow"}]
+  [:.console {:font-size "70%"
+              :overflow "scroll"}]
   [:.form-input [:input {:text-decoration 'none
                          :outline 'none
                          :border 'none

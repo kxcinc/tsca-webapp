@@ -4,27 +4,15 @@
    [cljs.core.match :refer-macros [match]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [tsca-webapp.task.effects :as task]
-   [oops.core :refer [oset!]]
-   ["../common/mock.js" :as mock])
+   [tsca-webapp.common.util :as util])
   (:require-macros [tsca-webapp.aii :refer [defcommand]]))
 
 (declare bil)
-(def loading-interval 250)
-(def bil-url "/js/bil-jslib.js")
 
-(defn- load-script [url object-name]
-  (let [el (doto (js/document.createElement "script")
-             (oset! :src url))]
-    (js/document.body.appendChild el)
-    (js/Promise.
-     (fn [resolve reject]
-       (letfn [(trial [] (if-let [obj (aget js/window object-name)]
-                           (resolve obj)
-                           (js/setTimeout trial loading-interval)))]
-         (trial))))))
+(def bil-url "/_tscalibs/bookapp-interface.js")
 
 (defn- initialize []
-  (-> (load-script bil-url "TSCABookappInterface")
+  (-> (util/load-script bil-url "TSCABookappInterface")
       (.then (fn [obj]
                (def bil obj)))))
 
@@ -37,14 +25,27 @@
   (-> (.split source ";")
       second))
 
-(defn process-single [_]
-  (let [avatar (-> (bil.avatars) first bil.avatarInfo)]
-    {:fund-amount          (.-balance avatar)
-     :original-fund-amount (.-amount (bil.genesisInfo))
-     :frozen-until         (parse-period (.-storage avatar))}))
+
+
+(defn load-initial-values []
+  (-> (bil.interpretSpiritStatus "basic.json")
+      (.then (fn [[_ result-json]] result-json))
+      (.then js/JSON.parse)
+      (.then #(js->clj % :keywordize-keys true))))
+
+(defn display-spell-assistant [salabel dom-id]
+  (-> (util/wait-until #(js/document.getElementById dom-id))
+      (.then (fn [dom]
+               (bil.displaySpellAssistant salabel dom)))))
+
+(defmulti dispatch :type)
+(defmethod dispatch :initial-values [_]
+  (load-initial-values))
+
+(defmethod dispatch :display-spell-assistant [{:keys [salabel dom-id]}]
+  (display-spell-assistant salabel dom-id))
 
 (re-frame/reg-fx
  :bil
  (fn [{:keys [commands] :as callback-ids}]
-   (let [promise (js/Promise.all (map process-single commands))]
-     (task/callback callback-ids (.then promise #(mock/sleep 1000 %))))))
+   (task/callback callback-ids (js/Promise.all (map dispatch commands)))))

@@ -1,17 +1,16 @@
 (ns tsca-webapp.book-app.views
   (:require
    [reagent.core :as reagent]
-   [re-frame.core :as re-frame]
-   [tsca-webapp.routes.routes :as rt]
-   [tsca-webapp.mock :as mock]
+   [re-frame.core :as r]
    [tsca-webapp.book-app.events :as events]
    [tsca-webapp.book-app.subs :as subs]))
 
+(def ^const iframe-id "assistant-modal")
+
 (defn- show-modal [modal-atom]
-  (let [url (rt/sa-proto0 {:label "withdraw"
-                           :query-params {:for mock/target-spec-frozen-withdraw}})]
-    (reset! modal-atom {:show true :url url})
-    (re-frame/dispatch [::events/change-iframe-url url])))
+  (let [salabel "withdraw"]
+    (reset! modal-atom {:show true})
+    (r/dispatch [::events/display-spell-assistant salabel iframe-id])))
 
 (defn- close-modal [modal-atom]
   (reset! modal-atom {:show false :url nil}))
@@ -23,11 +22,11 @@
                      [:div.columns {:key (str "p-" i)}
                       [:div.col-4 title]
                       [:div.col-4 value]])
-                   @(re-frame/subscribe [::subs/parameters]))
+                   @(r/subscribe [::subs/parameters]))
       [:div.gap]
       [:button.btn
        {:on-click #(show-modal modal-atom)}
-       @(re-frame/subscribe [::subs/button-label])]]])
+       @(r/subscribe [::subs/button-label])]]])
 
 (defn- assistnt-modal [modal-atom]
   (let [{:keys [show url]} @modal-atom]
@@ -36,7 +35,7 @@
        [:div.modal-overlay]
        [:div.modal-container.modal-large
         [:div.modal-body
-         [:iframe {:id "assistant-modal"}]]
+         [:iframe {:id iframe-id}]]
         [:div.modal-footer
          [:button.btn.btn-error
           {:on-click #(show-modal modal-atom)}
@@ -49,7 +48,7 @@
 (defn top []
   (let [modal-atom (reagent/atom {:show false :url nil})]
     [:div
-     (case @(re-frame/subscribe [::subs/status])
+     (case @(r/subscribe [::subs/status])
        :loading [:h4 "Loading..."]
        :error   [:h4.text-error "loading ERROR!"]
        [main-page modal-atom])

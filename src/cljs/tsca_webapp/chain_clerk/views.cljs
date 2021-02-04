@@ -1,40 +1,40 @@
 (ns tsca-webapp.chain-clerk.views
   (:require
    [reagent.core :as reagent]
-   [re-frame.core :as re-frame]
+   [re-frame.core :as r]
    [tsca-webapp.common.view-parts :as common]
    [tsca-webapp.chain-clerk.subs :as subs]
    [tsca-webapp.chain-clerk.events :as events]
    [tsca-webapp.task.events :as task]))
 
 (defn- class-for-visibility [step-id]
-  {:style (when (not @(re-frame/subscribe [::subs/step-visible? step-id]))
+  {:style (when (not @(r/subscribe [::subs/step-visible? step-id]))
             {:display "none"})})
 
 (defn- error-block [message-key on-retry on-cancel]
   [:div.empty
-       [:div.text-large.empty-title.text-error "ERROR!"]
-       [:div.empty-subtitle @(re-frame/subscribe [message-key])]
-       [:div.empty-action
-        [:div.btn.btn-warning.btn-lg
-         {:on-click on-retry}
-         "Retry"]
-        " "
-        [:button.btn.btn-link {:on-click on-cancel} "Cancel"]]])
+   [:div.text-large.empty-title.text-error "ERROR!"]
+   [:div.empty-subtitle @(r/subscribe [message-key])]
+   [:div.empty-action
+    [:div.btn.btn-warning.btn-lg
+     {:on-click on-retry}
+     "Retry"]
+    " "
+    [:button.btn.btn-link {:on-click on-cancel} "Cancel"]]])
 
 (defn- ledger-pubkey-block [state]
   (when (get-in @state [:ledger-pubkey :show])
-    (if @(re-frame/subscribe [::subs/ledger-pubkey-error])
+    (if @(r/subscribe [::subs/ledger-pubkey-error])
       [error-block ::subs/ledger-pubkey-error-message
-       #(re-frame/dispatch [::events/start-ledger-pubkey])
+       #(r/dispatch [::events/start-ledger-pubkey])
        #(swap! state assoc-in [:ledger-pubkey "show"] false)]
 
-      (let [{:keys [source public-key]} @(re-frame/subscribe [::subs/ledger-source-address])]
+      (let [{:keys [source public-key]} @(r/subscribe [::subs/ledger-source-address])]
         [:div.empty
-         [:div.empty-title @(re-frame/subscribe [::subs/ledger-pubkey-message])]
+         [:div.empty-title @(r/subscribe [::subs/ledger-pubkey-message])]
          (when source
            [:div.empty-subtitle "Your source address: " [:b source]])
-         (if @(re-frame/subscribe [::subs/ledger-pubkey-loading?])
+         (if @(r/subscribe [::subs/ledger-pubkey-loading?])
            [:div.empty-icon [:div.loading.loading-lg]])
          [:div.empty-action
           (when source
@@ -48,7 +48,7 @@
              " Use This Address"])
           [:button.btn.btn-link
            {:on-click #(do (swap! state assoc-in [:ledger-pubkey :show] false)
-                           (re-frame/dispatch [::task/cancel]))}
+                           (r/dispatch [::task/cancel]))}
            "Cancel"]]]))))
 
 (defn- fields-filled? [obj fields]
@@ -56,30 +56,35 @@
        (every? #(not (or (nil? %) (empty? %))))))
 
 (defn- start-simulating [form]
-  (let [ops @(re-frame/subscribe [::subs/operation])]
-    (re-frame/dispatch [::events/start-simulate form ops])))
+  (let [ops @(r/subscribe [::subs/operation])]
+    (r/dispatch [::events/start-simulate form ops])))
 
 (defn- ledger-op-block [state]
   (when (get-in @state [:ledger-op :show])
-    (if @(re-frame/subscribe [::subs/ledger-op-error])
+    (if @(r/subscribe [::subs/ledger-op-error])
       [error-block ::subs/ledger-op-error-message
        #(do (swap! state assoc :agreement false)
             (swap! state assoc-in [:ledger-op :show] false)
-            (start-simulating @(re-frame/subscribe [::subs/form])))
+            (start-simulating @(r/subscribe [::subs/form])))
        #(swap! state assoc-in [:ledger-op :show] false)]
 
       [:div.empty
-       [:div.empty-title @(re-frame/subscribe [::subs/ledger-op-message])]
-       [:div.flexbox (map-indexed (fn [index {:keys [label link]}]
-                                    [:a {:href link :target "_blank" :rel "noopener noreferrer"} label])
-                                  @(re-frame/subscribe [::subs/ledger-op-links]))]
-       (if @(re-frame/subscribe [::subs/ledger-op-loading?])
-         [:div.empty-icon [:div.loading.loading-lg]])
-       (when @(re-frame/subscribe [::subs/ledger-op-cancellable?])
+       [:h4.empty-title @(r/subscribe [::subs/ledger-op-message])]
+       (if @(r/subscribe [::subs/ledger-op-loading?])
+         [:div.empty-icon [:div.loading.loading-lg]]
+         [:div
+          (when-let [sprthash @(r/subscribe [::subs/ledger-op-sprit-hash])]
+            [:div "Sprit Hash: " sprthash])
+          [:div.gap]
+          (map-indexed (fn [index {:keys [label link]}]
+                         [:a {:href link :target "_blank" :rel "noopener noreferrer" :key index} label])
+                       @(r/subscribe [::subs/ledger-op-links]))
+          [:div "(It may take a while to be available)"]])
+       (when @(r/subscribe [::subs/ledger-op-cancellable?])
          [:div.empty-action
           [:button.btn.btn-link
            {:on-click #(do (swap! state assoc-in [:ledger-op :show] false)
-                           (re-frame/dispatch [::task/cancel]))}
+                           (r/dispatch [::task/cancel]))}
            "Cancel"]])])))
 
 (defn- proceed-button [state]
@@ -89,10 +94,9 @@
                                     [:name :e-mail :source-address]))
      :on-click #(let [st   @state
                       form (-> (:entering st)
-                               (assoc :network @(re-frame/subscribe [::subs/network]))
+                               (assoc :network @(r/subscribe [::subs/network]))
                                (assoc :public-key (get-in st [:ledger :public-key])))]
-                  (re-frame/dispatch [::events/go-to-next-step])
-                  (re-frame/dispatch [::events/load-cli-instructions])
+                  (r/dispatch [::events/go-to-next-step])
                   (start-simulating form))}
     [:i.icon.icon-arrow-right]
     " Proceed"]])
@@ -101,24 +105,19 @@
   [:label.form-switch
    [:input {:type "checkbox"
             :on-change #(swap! state update :agreement not)}]
-   [:i.form-icon] "I understand"])
+   [:i.form-icon] "It looks good to me"])
 
 (defn- simulation-block [state]
   [:div
-   [:h3 @(re-frame/subscribe [::subs/ledger-sim-message])]
-   (when @(re-frame/subscribe [::subs/ledger-sim-finished?])
+   [:h3 @(r/subscribe [::subs/ledger-sim-message])]
+   (when @(r/subscribe [::subs/ledger-sim-finished?])
      [:div
-      [:div.text-large "it costs " @(re-frame/subscribe [::subs/ledger-sim-total]) " ꜩ"]
-      [:div.columns
-       (mapcat (fn [{:keys [title value]}]
-                 [[:div.column.col-3 {:key (str "k1-" title)} title ":"]
-                  [:div.column.col-3 {:key (str "k2-" title)} [:b value " ꜩ"]]])
-                @(re-frame/subscribe [::subs/ledger-sim-detail]))]
+      [:pre.console {:style {:height "300px"}} @(r/subscribe [::subs/ledger-sim-detail])]
       [check-understand state]])
-   (when @(re-frame/subscribe [::subs/ledger-sim-error?])
+   (when @(r/subscribe [::subs/ledger-sim-error?])
      [:div
       [:button.btn.btn-link
-       {:on-click #(start-simulating @(re-frame/subscribe [::subs/form]))}
+       {:on-click #(start-simulating @(r/subscribe [::subs/form]))}
        "Retry"]])])
 
 (defn- tab-block [state state-key tabs]
@@ -132,18 +131,18 @@
       (for [[key name] tabs]
         [:li.tab-item {:class (when (= key current) "active")
                        :key key}
-         [:a {:on-click #(swap! state assoc state-key key)} name]])]
+         [:a.c-hand {:on-click #(swap! state assoc state-key key)} name]])]
      [block state]]))
 
 (defn- using-ledger [state]
   [:div.card-body
    [:h4 "if you have Ledger device"]
-   (if @(re-frame/subscribe [::subs/ledger-available?])
+   (if @(r/subscribe [::subs/ledger-available?])
      [:button.btn
       {:on-click #(do
                     (swap! state assoc-in [:ledger-op :show] true)
-                    (re-frame/dispatch [::task/cancel])
-                    (re-frame/dispatch [::events/start-ledger-op]))}
+                    (r/dispatch [::task/cancel])
+                    (r/dispatch [::events/start-ledger-op]))}
       "Proceed with Ledger"]
      [:button.btn.disabled
       "You need to load source address by ledger"])
@@ -151,15 +150,15 @@
    [ledger-op-block state]])
 
 (defn- using-cli [state]
-  (let [cli-instructions @(re-frame/subscribe [::subs/cli-instructions])]
-     [:div.card-body
-      [:h4 "use CLI"]
-      (if cli-instructions
-        (map-indexed (fn [i {:keys [prompt line]}]
-                       [:div.panel {:key (str "instruction-" i)}
-                        [:div.panel-body "> " line]])
-                     cli-instructions)
-        [:div "loading instructions..."])]))
+  (let [cli-instructions @(r/subscribe [::subs/ledger-sim-cli-description])
+        book-app @(r/subscribe [::subs/ledger-sim-book-app])]
+    [:div.card-body
+     [:h4 "use CLI"]
+     (when-let [{:keys [title url synopsis]} book-app]
+       [:div title " : " [:a {:href url} url]])
+     (if cli-instructions
+       [:pre cli-instructions]
+       [:div "loading instructions..."])]))
 
 (defn- operation-block [state]
   [:div
@@ -169,9 +168,11 @@
      [:cli    "use CLI" using-cli]]]])
 
 (defn- doit-block []
-  (let [state (reagent/atom {:ledger-op     {:show false}
+  (let [initial-tab (if @(r/subscribe [::subs/ledger-available?])
+                      :ledger :cli)
+        state (reagent/atom {:ledger-op     {:show false}
                              :agreement false
-                             :pay-by :ledger})]
+                             :pay-by initial-tab})]
     [(fn []
        [:div
         [simulation-block state]
@@ -200,23 +201,21 @@
      [:div {:class "col-6 col-md-6"}
       [common/input state [:entering :source-address]]]
      [:div.text-right {:class "col-3 col-md-6"}
-      [:div " or "
+      [:div "　or　"
        [:button.btn
         {:on-click #(do
                       (swap! state assoc-in [:ledger-pubkey :show] true)
-                      (re-frame/dispatch [::task/cancel])
-                      (re-frame/dispatch [::events/start-ledger-pubkey]))}
+                      (r/dispatch [::task/cancel])
+                      (r/dispatch [::events/start-ledger-pubkey]))}
         "Load from Ledger"]]]]
     [ledger-pubkey-block state :ledger-pubkey]]
    [:div.gap]
    [proceed-button state]])
 
 (defn- load-default-user-info []
-  (let [{:strs [name email srcaddr]} (-> (js/window.TSCAInternalInterface.Proto0.defaultClerkUserInfo)
+  (let [{:strs [name email tzaddr]} (-> (js/window.TSCAInternalInterface.Proto0.defaultClerkUserInfo)
                                                js->clj)]
-    {:name name :e-mail email :source-address srcaddr}))
-
-
+    {:name name :e-mail email :source-address tzaddr}))
 
 (defn clerk-top []
   (let [state (reagent/atom {:entering (load-default-user-info)
@@ -227,8 +226,8 @@
        [:div.card
         [:div.card-header [:h4 "Chain Clerk"]]
         [:div.card-body
-         [:div.pre {:class @(re-frame/subscribe [::subs/description-style])}
-          @(re-frame/subscribe [::subs/description])]]]]
+         [:div.pre {:class @(r/subscribe [::subs/description-style])}
+          @(r/subscribe [::subs/description])]]]]
       [:div.column.col-8.col-xl-12
        [:div.card
         [:div.card-body

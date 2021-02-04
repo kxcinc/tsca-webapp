@@ -4,49 +4,36 @@
    [cljs.core.match :refer-macros [match]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [tsca-webapp.task.effects :as task]
-   [oops.core :refer [oset!]]
-   ["../common/mock.js" :as mock])
+   [tsca-webapp.common.util :as util]
+   [tsca-webapp.mock :as m])
   (:require-macros [tsca-webapp.aii :refer [defcommand]]))
 
 (declare aii)
-(def loading-interval 250)
-;; (def aii-url "https://devapi.tsca.kxc.io/aii-jslib.js")
-(def aii-url "/js/aii-jslib.js")
 
-(defn- load-script [url object-name]
-  (let [el (doto (js/document.createElement "script")
-             (oset! :src url))]
-    (js/document.body.appendChild el)
-    (js/Promise.
-     (fn [resolve reject]
-       (letfn [(trial [] (if-let [obj (aget js/window object-name)]
-                           (resolve obj)
-                           (js/setTimeout trial loading-interval)))]
-         (trial))))))
+;; (def aii-url "https://devapi.tsca.kxc.io/aii-jslib.js")
+;; (def aii-url "/js/aii-jslib.js")
+(def aii-url "/_tscalibs/aii-jslib.js")
+
+(defn bookapp-url [spirit-hash]
+  (aii.Proto0.bookAppUrlForSpirit spirit-hash))
+
 
 (defn- initialize []
-  (-> (load-script aii-url "TSCAInternalInterface")
+  (-> (util/load-script aii-url "TSCAInternalInterface")
       (.then (fn [obj]
                (def aii obj)))))
-
 
 (defcommand bookhash-list []
   (aii.RefMaster.listAdvertizedBooks))
 
 (defcommand book-info [bookhash]
-  (aii.InfoBank.getBook #js {:bookhash bookhash}))
-
-(defcommand book-charge [bookhash]
-  (aii.RefMaster.getBookCharges #js {:bookhash bookhash}))
+  (aii.InfoBank.getBookEntry (js/String bookhash)))
 
 (defcommand book-status [bookhash]
-  (aii.RefMaster.getBookStatus #js {:bookhash bookhash}))
-
-(defcommand book-references [bookhash]
-  (aii.RefMaster.getBookReferences #js {:bookhash bookhash}))
+  (aii.RefMaster.getBookStatus (js/String bookhash)))
 
 (defcommand provider-info [providerident]
-  (aii.RefMaster.getProviderInfo #js {:provider providerident}))
+  (aii.RefMaster.getProviderInfo  (js/String providerident)))
 
 (defn book-info-and-provider [bookhash]
   (-> (book-info bookhash)
@@ -59,33 +46,81 @@
   (aii.Proto0.forgeOperation js-ops-model))
 
 (defcommand calculate-address-from-public-key [public-key]
-  (aii.TezosUtilities.calculateAddressFromPublicKeyAsync public-key))
+  (aii.TezosUtils.calculateaddressfromledgerpublickey public-key))
 
-(defcommand get-spell-verifier [sahash]
-  (aii.Proto0.getSpellVerifier #js {:sahash sahash}))
+(defcommand get-spell-verifier [label tmplhash]
+  (aii.SpellAssistant.getSpellAssistant (js/String label)
+                                        (js/String tmplhash)))
 
-(defn generate-spell-verifier [sahash]
-  (-> (get-spell-verifier sahash)
-      (.then #(:verifier %))))
+(defn generate-spell-verifier [label tmplhash]
+  (-> (get-spell-verifier label tmplhash)
+      (.then (fn [{:keys [spell_assistant tmplversion]}]
+               {:tmplversion tmplversion
+                :verifier spell_assistant}))))
 
-(defcommand simulate-operation [js-network txn js-simprivinfo]
-  (aii.Proto0.simulateOperation #js {:network js-network
-                                     :txn txn
-                                     :simprivinfo js-simprivinfo}))
+(defcommand process-spell-assistant [salabel tmplversion fieldValues]
+  (let [param (-> {:tmplversion tmplversion
+                   :salabel salabel
+                   :fieldValues fieldValues}
+                  clj->js
+                  js/JSON.stringify)]
+    (aii.SpellAssistant.processSpellAssistant (js/JSON.parse param))))
 
-(defn- simulate [js-ops]
-  (let [js-network (.-network js-ops)]
-    (-> (forge-operation js-ops)
-        (.then (fn [{:keys [unsignedtxn simprivinfo]}]
-                 (let [js-simprivinfo (clj->js simprivinfo) ;; fixme: wasted conversion
-                       ]
-                   (-> (simulate-operation js-network unsignedtxn js-simprivinfo)
-                       (.then (fn [ret]
-                                (if (:succeeded ret)
-                                  (-> ret
-                                      (dissoc :succeeded)
-                                      (assoc :simprivinfo js-simprivinfo))
-                                  (js/Promise.reject (:error ret))))))))))))
+(defn verify-spell-params [salabel tmplversion fieldValues]
+  (-> (process-spell-assistant salabel tmplversion fieldValues)
+      (.then #(match [%]
+                     [["SpellAssistantProcessed" {:spell spell}]] spell
+
+                     [["SpellAssistantProcessError" {:message message
+                                                     :fix_hints hints}]]
+                     (js/Promise.reject {:message message
+                                         :hints hints})
+
+                     :else (js/Promise.reject {:message "unknown format"
+                                               :error %})))))
+
+(defn- build-process-request [network for spell user-info]
+  (if (= (.-spellkind for) "spellofgenesis")
+    {:request-api aii.Proto0.processGenesisRequest
+     :simulate-api aii.Proto0.simulateGenesis
+     :request {:network network
+               :template (.-tmplhash for)
+               :requester (:source-address user-info)
+               :name (:name user-info)
+               :email (:e-mail user-info)
+               :spell spell}}
+
+    {:request-api aii.Proto0.processInvocationRequest
+     :simulate-api aii.Proto0.simulateInvocation
+     :request {:network nil
+               :spirit (.-sprthash for)
+               :requester (:source-address user-info)
+               :name (:name user-info)
+               :email (:e-mail user-info)
+               :spell spell}}))
+
+(defn- book-app-info [proc]
+  (or (some->
+       (.-sprthash proc)
+       aii.Proto0.bookAppUrlForSpirit)
+      (js/Promise.resolve nil)))
+
+(defn- simulate [network for spell user-info]
+  (let [{:keys [request-api simulate-api request]} (build-process-request network for spell user-info)
+        request (clj->js request)]
+    (-> (request-api request)
+        (.then (fn [proc]
+                 (let [instruction (aii.Helpers.formatCliInstructionIntoString (.-cli_instructions proc))]
+                   (-> (book-app-info proc)
+                       (.then (fn [book-app]
+                                (-> (simulate-api request proc)
+                                    (.then (fn [[result-type result]]
+                                             (if (= result-type "SimulationFailed")
+                                               (js/Promise.reject (get (js->clj result) "error_message"))
+                                               (assoc (js->clj result :keywordize-keys true)
+                                                      :instruction instruction
+                                                      :sprthash (.-sprthash proc)
+                                                      :book-app (js->clj book-app :keywordize-keys true)))))))))))))))
 
 (defcommand check-operation-injection [inject-token]
   (aii.Proto0.checkOperationInjection #js {:injtoken inject-token}))
@@ -95,47 +130,34 @@
        (= templatefees (:templatefees fees))
        (= rawamount (:rawamount fees))))
 
-(defn- confirm-simulation [adjustedtxn source-address js-network fees js-simprivinfo]
-  (-> (simulate-operation js-network adjustedtxn js-simprivinfo)
-      (.then (fn [ret]
-               (if (:succeeded ret)
-                 (if (same-fee? ret fees)
-                   (:adjustedtxn ret)
-                   (js/Promise.reject "fee isn't same"))
-                 (js/Promise.reject (:error ret)))))))
-
-(defcommand inject-operation [txn public-key source-address signature js-network]
-  (aii.Proto0.injectOperation #js {:unsignedtxn txn
-                                   :signer public-key
-                                   :srcaddr source-address
-                                   :signature signature
-                                   :network js-network}))
+(defcommand inject-operation [txn signature js-network]
+  (aii.Proto0.injectOperation #js {:network js-network
+                                   :unsigned_transaction txn
+                                   :signature signature}))
 
 (defn- inject [txn public-key source-address signature js-network]
-  (-> (inject-operation txn public-key source-address signature js-network)
-      (.then (fn [{:keys [injtoken timeout minqueryinterval]}]
-               {:injection-token injtoken :interval minqueryinterval}))))
+  (-> (inject-operation txn signature js-network)
+      (.then (fn [[result-type result]]
+               (prn "pass" result-type result)
+               (if (= result-type "InjectionFailed")
+                 (js/Promise.reject (:error_message result))
+                 (js->clj result :keywordize-keys true))))))
 
 (defcommand template-current-version [tmplhash]
   (aii.RefMaster.templateCurrentVersion #js {:tmplhash tmplhash}))
 
 (defn all-book-info []
   (-> (bookhash-list)
-      (.then #(:books %))
       (.then (fn [books]
                (->> books
                     (map #(:bookhash %))
                     (map book-info)
                     (js/Promise.all))))))
 
-(defcommand generate-description [sahash]
-  (throw "not implemented"))
-
-(defcommand generate-cli-instructions [sahash spell]
-  [{:prompt "dummy"
-    :line (str "tezos-client transfer 10 from "
-               "tz1NQ5Fk7eJCe1zGmngv2GRnJK9G1nEnQahQ"
-               " to KT1CUTjTqf4UMf6c9A8ZA4e1ntWbLVTnvrKG --arg \"0x030292837483\" --fee 0.572 --burn-cap 2.3")}])
+(defcommand generate-description [for spell sahash]
+  (clojure.string/join "\n" [(str "sahash: " sahash)
+                             (str "spell: " spell)
+                             (str "for: " for)]))
 
 (re-frame/reg-fx
  :aii-initialize
@@ -184,18 +206,18 @@
   (match [command]
          [{:type :all-book}] (all-book-info)
          [{:type :book-info :bookhash bookhash}] (book-info-and-provider bookhash)
-         [{:type :book-charge :bookhash bookhash}] (book-charge bookhash)
          [{:type :book-status :bookhash bookhash}] (book-status bookhash)
-         [{:type :book-references :bookhash bookhash}] (book-references bookhash)
          [{:type :provider-info :providerident providerident}] (provider-info providerident)
          [{:type :source-address :public-key pk}] (calculate-address-from-public-key pk)
-         [{:type :simulate :ops ops}] (simulate ops)
-         [{:type :spell-verifier :sahash sahash}] (generate-spell-verifier sahash)
-         [{:type :description :sahash sahash}] (generate-description sahash)
-         [{:type :cli-instructions
-           :sahash sahash :spell spell}]    (generate-cli-instructions sahash spell)
-         [{:type :re-simulate :adjusted-txn txn :simprivinfo js-simprivinfo
-           :source-address source :network js-network :fee fee}] (confirm-simulation txn source js-network fee js-simprivinfo)
+         [{:type :simulate :network network :for for :spell spell :user-info user-info}] (simulate network for spell user-info)
+         [{:type :spell-verifier
+           :label label
+           :tmplhash tmplhash}] (generate-spell-verifier label tmplhash)
+         [{:type :verify-spell-params
+           :salabel salabel
+           :tmplversion tmplversion
+           :fieldValues fieldValues}] (verify-spell-params salabel tmplversion fieldValues)
+         [{:type :description :sahash sahash :for for :spell spell}] (generate-description for spell sahash)
          [{:type :inject-operation :signature signature
            :txn txn :public-key public-key :source-address source-address
            :network js-network}] (inject txn public-key source-address signature js-network)
@@ -206,4 +228,4 @@
  :aii
  (fn [{:keys [commands] :as callback-ids}]
    (let [promise (js/Promise.all (map process-single commands))]
-     (task/callback callback-ids (.then promise #(mock/sleep 1000 %))))))
+     (task/callback callback-ids promise))))
