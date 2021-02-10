@@ -13,10 +13,7 @@
                            "genesis" "MOCK_sahash_proto0_frozen_genesis"
                            (throw (str "Unknown label:" label)))]
               {:db (-> db
-                       (assoc :screen {:state :verifier-loading}))
-               :aii {:commands [{:type :spell-verifier :sahash sahash}]
-                     :success-id ::verifier-ready
-                     :error-id   ::verifier-loading-error}})))
+                       (assoc :screen {:state :verifier-loading}))})))
 
 (re-frame/reg-event-db
  ::verifier-ready

@@ -57,10 +57,32 @@
  ::verifier-state
  :<- [::screen]
  (fn [screen]
-   (:state screen)))
+   :verifier-loaded))
 
 (re/reg-sub
  ::verifier
  :<- [::screen]
  (fn [screen]
    (:verifier screen)))
+
+(re/reg-sub
+ ::spell-builder
+ :<- [::label]
+ (fn [label]
+   (case label
+     "withdraw" (fn [o]
+                  (let [{:strs [amount beneficiary]} (js->clj o)]
+                   (str "(frozen0.withdraw "
+                         amount "tz "
+                         beneficiary
+                        ")")))
+     "genesis" (fn [o]
+                 (let [{:strs [fund_amount unfrozen fund_owners]} (js->clj o)]
+                   (str "(frozen0.gen "
+                        fund_amount "tz "
+                        "(" (s/join " " fund_owners) ") "
+                        unfrozen
+                        ")")))
+     "unknown")
+   ))
+

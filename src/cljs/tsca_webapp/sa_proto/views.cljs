@@ -49,11 +49,12 @@
 (defn- info [state validation serializer]
   (let [st @state
         v  @validation
+        build-spell @(re-frame/subscribe [::subs/spell-builder])
         aii-valid (:aii-valid v)]
     [:div.panel
      [:div.panel-body
-      [:pre (str (try (js/JSON.stringify (serializer (:entering st)))
-                   (catch :default e "error!")))]
+      [:pre (str (try (build-spell (serializer (:entering st)))
+                      (catch :default e "error!")))]
       (when (not (:valid? aii-valid))
         [:pre.text-error
          (if (:message aii-valid)
@@ -77,17 +78,19 @@
    "Proceed"])
 
 (defn- aii-validate [serializer aii-verifier state validation]
-  (try (let [{:keys [valid error]} (-> (:entering @state)
-                                       serializer
-                                       aii-verifier
-                                       (js->clj :keywordize-keys true))]
-         (swap! validation assoc :aii-valid {:valid? valid :message error}))
-       (catch :default e
-         (js/console.error "error from aii" e)
-         (swap! validation assoc :aii-valid {:valid? false :ex e}))))
+  ;; (try (let [{:keys [valid error]} (-> (:entering @state)
+  ;;                                      serializer
+  ;;                                      aii-verifier
+  ;;                                      (js->clj :keywordize-keys true))]
+  ;;        (swap! validation assoc :aii-valid {:valid? valid :message error}))
+  ;;      (catch :default e
+  ;;        (js/console.error "error from aii" e)
+  ;;        (swap! validation assoc :aii-valid {:valid? false :ex e})))
+  (swap! validation assoc :aii-valid {:valid? true :message nil})
+  )
 
 (defn- forms [xs]
-  (let [aii-verifier @(re-frame/subscribe [::subs/verifier])
+  (let [aii-verifier nil ;; @(re-frame/subscribe [::subs/verifier])
         validator (build-validator xs)
         validation (reagent/atom (validator {}))
         serializer (build-serializer xs)
@@ -128,14 +131,14 @@
     :invalid-message "required"}])
 
 (defn- genesis []
-  [{:label "Fund Owners" :field :fund-owners :validate-by not-empty?
-    :convert :comma-separated
-    :invalid-message "required"}
-   {:label "Fund Amount" :field :fund-amount :validate-by positive-number? :convert :number
+  [{:label "Fund_amount" :field :fund-amount :validate-by positive-number? :convert :number
     :invalid-message "positive number ony"}
-   {:label "Unfrozen till" :field :unfrozen :validate-by iso8601?
+   {:label "Frozen_until" :field :unfrozen :validate-by iso8601?
     :datetime true
-    :invalid-message "date format (e.g. 2020-07-02 00:00:00 )"}])
+    :invalid-message "date format (e.g. 2020-07-02 00:00:00 )"}
+   {:label "Fund_owners" :field :fund-owners :validate-by not-empty?
+    :convert :comma-separated
+    :invalid-message "required"}])
 
 (defn main [agreed?]
   [:div {:style {:display (when (not @agreed?) "none")}}
@@ -158,7 +161,7 @@
        #(reset! agreed? true)]]]))
 
 (defn top []
-  (let [agreed? (reagent/atom false)]
+  (let [agreed? (reagent/atom true)]
     [:div.docs-content
      [assistant-term agreed?]
      [(fn []
