@@ -54,7 +54,8 @@
 
 (defn- show-modal [modal-atom]
   (let [url (rt/sa-proto0 {:label "genesis"
-                           :query-params {:for mock/target-spec-frozen}})]
+                           :query-params {:networks mock/testnet
+                                          :for mock/target-spec-frozen}})]
     (reset! modal-atom {:show true :url url})
     (re-frame/dispatch [::events/change-iframe-url url])))
 

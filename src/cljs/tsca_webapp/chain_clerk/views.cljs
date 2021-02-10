@@ -108,12 +108,7 @@
    [:h3 @(re-frame/subscribe [::subs/ledger-sim-message])]
    (when @(re-frame/subscribe [::subs/ledger-sim-finished?])
      [:div
-      [:div.text-large "it costs " @(re-frame/subscribe [::subs/ledger-sim-total]) " ꜩ"]
-      [:div.columns
-       (mapcat (fn [{:keys [title value]}]
-                 [[:div.column.col-3 {:key (str "k1-" title)} title ":"]
-                  [:div.column.col-3 {:key (str "k2-" title)} [:b value " ꜩ"]]])
-                @(re-frame/subscribe [::subs/ledger-sim-detail]))]
+      [:pre.console {:style {:height "300px"}} @(re-frame/subscribe [::subs/ledger-sim-detail])]
       [check-understand state]])
    (when @(re-frame/subscribe [::subs/ledger-sim-error?])
      [:div
@@ -151,14 +146,11 @@
    [ledger-op-block state]])
 
 (defn- using-cli [state]
-  (let [cli-instructions @(re-frame/subscribe [::subs/cli-instructions])]
+  (let [cli-instructions @(re-frame/subscribe [::subs/ledger-sim-cli-description])]
      [:div.card-body
       [:h4 "use CLI"]
       (if cli-instructions
-        (map-indexed (fn [i {:keys [prompt line]}]
-                       [:div.panel {:key (str "instruction-" i)}
-                        [:div.panel-body "> " line]])
-                     cli-instructions)
+        [:pre.console cli-instructions]
         [:div "loading instructions..."])]))
 
 (defn- operation-block [state]
@@ -212,9 +204,9 @@
    [proceed-button state]])
 
 (defn- load-default-user-info []
-  (let [{:strs [name email srcaddr]} (-> (js/window.TSCAInternalInterface.Proto0.defaultClerkUserInfo)
+  (let [{:strs [name email tzaddr]} (-> (js/window.TSCAInternalInterface.Proto0.defaultClerkUserInfo)
                                                js->clj)]
-    {:name name :e-mail email :source-address srcaddr}))
+    {:name name :e-mail email :source-address tzaddr}))
 
 
 

@@ -118,10 +118,10 @@
 (re/reg-sub
  ::operation
  :<- [::common/query-params]
- (fn [{:keys [for spell]}]
+ (fn [{:keys [for spell networks]}]
    #js {:target  (js/JSON.parse for)
-        :spell   (js/JSON.parse spell)
-        :network (js/JSON.parse mock/testnet)}))
+        :spell   spell
+        :network (js/JSON.parse networks)}))
 
 (re/reg-sub
  ::ledger-sim-result
@@ -129,21 +129,17 @@
    (get-in db [:clerk :ledger :state :sim :result])))
 
 (re/reg-sub
- ::ledger-sim-total
- :<- [::ledger-sim-result]
- (fn [{:keys [rawamount networkfees templatefees]}]
-   (+ rawamount (:fee networkfees) (:burn networkfees)
-      (:agency templatefees) (:provider templatefees))))
-
-(re/reg-sub
  ::ledger-sim-detail
  :<- [::ledger-sim-result]
- (fn [{:keys [networkfees templatefees]}]
-   (->> [{:title "network(fee)" :value (:fee networkfees)}
-         {:title "network(burn)" :value (:burn networkfees)}
-         {:title "template(agency)"   :value (:agency templatefees)}
-         {:title "template(provider)" :value (:provider templatefees)}]
-        (filter :value))))
+ (fn [{:keys [simulation_output]}]
+   simulation_output))
+
+
+(re/reg-sub
+ ::ledger-sim-cli-description
+ :<- [::ledger-sim-result]
+ (fn [{:keys [instruction]}]
+   instruction))
 
 (re/reg-sub
  ::ledger-sim-status
@@ -254,11 +250,6 @@
                             (str "target: " for)
                             (str "spell: " spell)])
      "")))
-
-(re/reg-sub
- ::cli-instructions
- (fn [db]
-   (get-in db [:clerk :ledger :state :inst :instrunctions])))
 
 (re/reg-sub
  ::form

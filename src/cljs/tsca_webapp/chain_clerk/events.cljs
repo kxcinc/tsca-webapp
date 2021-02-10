@@ -17,10 +17,11 @@
 (re-frame/reg-event-fx
  ::load-description
  (fn-traced [{:keys [db]} _]
-            (let [sahash (get-in db [:routing-params :query-params :sahash])]
+            (let [{:keys [sahash for spell]} (get-in db [:routing-params :query-params])]
               {:db (-> db
                        (assoc-in [:clerk :ledger :state :desc] {:status :loading}))
                :aii {:commands [{:type :description
+                                 :for for :spell spell
                                  :sahash sahash}]
                      :success-id ::load-description-done
                      :error-id   ::load-description-error}})))
@@ -91,13 +92,16 @@
 (re-frame/reg-event-fx
  ::start-simulate
  (fn-traced [{:keys [db]} [_ form ops]]
-            {:db (-> db
-                     (assoc-in [:clerk :ledger :state :sim] {:status :loading})
-                     (assoc-in [:clerk :ledger :state :op ] {})
-                     (assoc-in [:clerk :form] form))
-             :aii {:commands [{:type :simulate :ops ops}]
-                   :success-id ::simulation-done
-                   :error-id   ::simulation-error}}))
+            (let [{:keys [for networks spell]} (get-in db [:routing-params :query-params])]
+              {:db (-> db
+                       (assoc-in [:clerk :ledger :state :sim] {:status :loading})
+                       (assoc-in [:clerk :ledger :state :op ] {})
+                       (assoc-in [:clerk :form] form))
+               :aii {:commands [{:type :simulate
+                                 :network (js/JSON.parse networks) :for (js/JSON.parse for)
+                                 :spell spell :user-info form}]
+                     :success-id ::simulation-done
+                     :error-id   ::simulation-error}})))
 
 (re-frame/reg-event-db
  ::simulation-done

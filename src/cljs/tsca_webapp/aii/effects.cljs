@@ -53,7 +53,7 @@
   (aii.Proto0.forgeOperation js-ops-model))
 
 (defcommand calculate-address-from-public-key [public-key]
-  (aii.TezosUtilities.calculateAddressFromPublicKeyAsync public-key))
+  (aii.TezosUtils.calculateaddressfromledgerpublickey public-key))
 
 (defcommand get-spell-verifier [sahash]
   (aii.Proto0.getSpellVerifier (js/String sahash)))
@@ -62,24 +62,60 @@
   (-> (get-spell-verifier sahash)
       (.then #(:verifier %))))
 
-(defcommand simulate-operation [js-network txn js-simprivinfo]
-  (aii.Proto0.simulateOperation #js {:network js-network
-                                     :txn txn
-                                     :simprivinfo js-simprivinfo}))
+(defn- build-process-request [network for spell user-info]
+  {:request-api aii.Proto0.processGenesisRequest
+   :simulate-api aii.Proto0.simulateGenesis
+   :request {:network network
+             :template (.-tmplhash for)
+             :requester (:source-address user-info)
+             :name (:name user-info)
+             :email (:e-mail user-info)
+             :spell spell}})
 
-(defn- simulate [js-ops]
-  (let [js-network (.-network js-ops)]
-    (-> (forge-operation js-ops)
-        (.then (fn [{:keys [unsignedtxn simprivinfo]}]
-                 (let [js-simprivinfo (clj->js simprivinfo) ;; fixme: wasted conversion
-                       ]
-                   (-> (simulate-operation js-network unsignedtxn js-simprivinfo)
-                       (.then (fn [ret]
-                                (if (:succeeded ret)
-                                  (-> ret
-                                      (dissoc :succeeded)
-                                      (assoc :simprivinfo js-simprivinfo))
-                                  (js/Promise.reject (:error ret))))))))))))
+(comment
+  (let [{:keys [api request]} (build-process-request (js/JSON.parse m/testnet)
+                                                     {:spellkind "spellofgenesis"
+                                                      :tmplhash "tmpL1Q7GJiqzmwuS3SkSiWbreXWsxWrk3Y"}
+                                                     m/spell-frozen
+                                                     {:name "Ichiro Sakai"
+                                                      :e-mail "i.sakai@example.org"
+                                                      :source-address "tz1gmHNqdXuM5bf8FU9dNaACuAqgRA9VLGUm"
+                                                      ;; "tz1NQ5Fk7eJCe1zGmngv2GRnJK9G1nEnQahQ"
+                                                      })]
+    (def api api)
+    (def request (clj->js request)))
+  
+  (.then (api request)
+         #(def proc %))
+
+  (-> (TSCAInternalInterface.Proto0.simulateGenesis request proc)
+      (.then
+       (fn [[result-type message]]
+         (if (= result-type "SimulationFailed")
+           (js/Promise.reject (get (js->clj message) "error_message"))
+           message)))
+      (.then #(def sim-result (js->clj %)))
+      (.catch prn))
+
+  (aii.Helpers.formatCliInstructionIntoString (.-cli_instructions proc))
+
+  (str (get sim-result "watermark")
+       (get sim-result "unsigned_transaction")))
+
+
+(defn- simulate [network for spell user-info]
+  (let [{:keys [request-api simulate-api request]} (build-process-request network for spell user-info)
+        request (clj->js request)]
+    (-> (request-api request)
+        (.then (fn [proc]
+                 (let [instruction (aii.Helpers.formatCliInstructionIntoString (.-cli_instructions proc))]
+                   (prn "proc" simulate-api)
+                   (-> (simulate-api request proc)
+                       (.then (fn [[result-type result]]
+                                (if (= result-type "SimulationFailed")
+                                  (js/Promise.reject (get (js->clj result) "error_message"))
+                                  (assoc (js->clj result :keywordize-keys true)
+                                         :instruction instruction)))))))))))
 
 (defcommand check-operation-injection [inject-token]
   (aii.Proto0.checkOperationInjection #js {:injtoken inject-token}))
@@ -88,15 +124,6 @@
   (and (= networkfees (:networkfees fees))
        (= templatefees (:templatefees fees))
        (= rawamount (:rawamount fees))))
-
-(defn- confirm-simulation [adjustedtxn source-address js-network fees js-simprivinfo]
-  (-> (simulate-operation js-network adjustedtxn js-simprivinfo)
-      (.then (fn [ret]
-               (if (:succeeded ret)
-                 (if (same-fee? ret fees)
-                   (:adjustedtxn ret)
-                   (js/Promise.reject "fee isn't same"))
-                 (js/Promise.reject (:error ret)))))))
 
 (defcommand inject-operation [txn public-key source-address signature js-network]
   (aii.Proto0.injectOperation #js {:unsignedtxn txn
@@ -121,8 +148,10 @@
                     (map book-info)
                     (js/Promise.all))))))
 
-(defcommand generate-description [sahash]
-  (throw "not implemented"))
+(defcommand generate-description [for spell sahash]
+  (clojure.string/join "\n" [(str "sahash: " sahash)
+                             (str "spell: " spell)
+                             (str "for: " for)]))
 
 (defcommand generate-cli-instructions [sahash spell]
   [{:prompt "dummy"
@@ -180,21 +209,18 @@
          [{:type :book-status :bookhash bookhash}] (book-status bookhash)
          [{:type :provider-info :providerident providerident}] (provider-info providerident)
          [{:type :source-address :public-key pk}] (calculate-address-from-public-key pk)
-         [{:type :simulate :ops ops}] (simulate ops)
-         [{:type :spell-verifier :sahash sahash}] (generate-spell-verifier sahash)
-         [{:type :description :sahash sahash}] (generate-description sahash)
+         [{:type :simulate :network network :for for :spell spell :user-info user-info}] (simulate network for spell user-info)
          [{:type :cli-instructions
            :sahash sahash :spell spell}]    (generate-cli-instructions sahash spell)
-         [{:type :re-simulate :adjusted-txn txn :simprivinfo js-simprivinfo
-           :source-address source :network js-network :fee fee}] (confirm-simulation txn source js-network fee js-simprivinfo)
+         [{:type :spell-verifier :sahash sahash}] (generate-spell-verifier sahash)
+         [{:type :description :sahash sahash :for for :spell spell}] (generate-description for spell sahash)
          [{:type :inject-operation :signature signature
            :txn txn :public-key public-key :source-address source-address
            :network js-network}] (inject txn public-key source-address signature js-network)
-         [{:type :confirm-injection :injection-token injection-token :interval interval}] (waiting-for-done injection-token interval)
          :else (js/Promise.reject (str "unknown command" command))))
 
 (re-frame/reg-fx
  :aii
  (fn [{:keys [commands] :as callback-ids}]
    (let [promise (js/Promise.all (map process-single commands))]
-     (task/callback callback-ids (.then promise #(mock/sleep 1000 %))))))
+     (task/callback callback-ids promise))))
