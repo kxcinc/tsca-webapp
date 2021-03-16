@@ -14,7 +14,6 @@
   (lglog/listen (fn [log] (js/console.log log))))
 
 (def scramble-key "XTZ")
-(def water-mark "03")
 (def tezos-path "44'/1729'/0'/0'")
 (def timeout 60000)
 (def tz-app (atom nil))
@@ -44,9 +43,9 @@
       (.then #(.getAddress % tezos-path true))
       (.then #(.-publicKey %))))
 
-(defn- sign [operation-text]
+(defn- sign [watermark operation-text]
   (-> (open-app)
-      (.then #(.signOperation % tezos-path (str water-mark operation-text) 0))
+      (.then #(.signOperation % tezos-path (str watermark operation-text) 0))
       (.then (fn [x] {:txn operation-text :signature (.-signature x)}))))
 
 (defn- error-code [err-key]
@@ -96,5 +95,5 @@
 
 (re-frame/reg-fx
  :ledger-sign
- (fn [{:keys [operation-text] :as m}]
-   (task/callback m (wrap-error (sign operation-text)))))
+ (fn [{:keys [watermark operation-text] :as m}]
+   (task/callback m (wrap-error (sign watermark operation-text)))))

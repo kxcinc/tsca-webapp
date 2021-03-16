@@ -142,6 +142,12 @@
    instruction))
 
 (re/reg-sub
+ ::ledger-sim-book-app
+ :<- [::ledger-sim-result]
+ (fn [{:keys [book-app]}]
+   book-app))
+
+(re/reg-sub
  ::ledger-sim-status
  :<- [::ledger-sim-state]
  (fn [state _]
@@ -187,12 +193,16 @@
    (not=  state :done)))
 
 (re/reg-sub
+ ::ledger-op-spirit-hash
+ :<- [::ledger-sim-result]
+ (fn [{:keys [sprthash]}]
+   sprthash))
+
+(re/reg-sub
  ::ledger-op-links
- :<- [::ledger-op-state]
- (fn [{:keys [result]}]
-   (concat (when-let [bookapplink (:bookapplink result)]
-             {:label "book app" :link bookapplink})
-           (:explorerlink result))))
+ :<- [::ledger-sim-result]
+ (fn [{:keys [book-app]}]
+   [{:label (:title book-app) :link (:url book-app)}]))
 
 (re/reg-sub
  ::ledger-op-message
@@ -261,4 +271,3 @@
  :<- [::form]
  (fn [form]
    (boolean (:public-key form))))
-

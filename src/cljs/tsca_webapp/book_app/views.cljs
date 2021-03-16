@@ -2,14 +2,18 @@
   (:require
    [reagent.core :as reagent]
    [re-frame.core :as re-frame]
+   [secretary.core]
    [tsca-webapp.routes.routes :as rt]
    [tsca-webapp.mock :as mock]
    [tsca-webapp.book-app.events :as events]
    [tsca-webapp.book-app.subs :as subs]))
 
+(defn- build-spell-assistant-url [host label params]
+  (str "https://" host "/widgets/spellassistant/proto0/frozen/" label "?" (secretary.core/encode-query-params params)))
+
 (defn- show-modal [modal-atom]
-  (let [url (rt/sa-proto0 {:label "withdraw"
-                           :query-params {:for mock/target-spec-frozen-withdraw}})]
+  (let [url (build-spell-assistant-url "localhost:7000" "withdraw" {:networks mock/testnet
+                                                                    :for mock/target-spec-frozen-withdraw})]
     (reset! modal-atom {:show true :url url})
     (re-frame/dispatch [::events/change-iframe-url url])))
 

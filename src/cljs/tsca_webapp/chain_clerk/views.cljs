@@ -69,12 +69,16 @@
        #(swap! state assoc-in [:ledger-op :show] false)]
 
       [:div.empty
-       [:div.empty-title @(re-frame/subscribe [::subs/ledger-op-message])]
-       [:div.flexbox (map-indexed (fn [index {:keys [label link]}]
-                                    [:a {:href link :target "_blank" :rel "noopener noreferrer"} label])
-                                  @(re-frame/subscribe [::subs/ledger-op-links]))]
+       [:h4.empty-title @(re-frame/subscribe [::subs/ledger-op-message])]
        (if @(re-frame/subscribe [::subs/ledger-op-loading?])
-         [:div.empty-icon [:div.loading.loading-lg]])
+         [:div.empty-icon [:div.loading.loading-lg]]
+         [:div
+          [:div "Spirit Hash: " @(re-frame/subscribe [::subs/ledger-op-spirit-hash])]
+          [:div.gap]
+          (map-indexed (fn [index {:keys [label link]}]
+                         [:a {:href link :target "_blank" :rel "noopener noreferrer" :key index} label])
+                       @(re-frame/subscribe [::subs/ledger-op-links]))
+          [:div "(It may take a while to be available)"]])
        (when @(re-frame/subscribe [::subs/ledger-op-cancellable?])
          [:div.empty-action
           [:button.btn.btn-link
@@ -92,7 +96,6 @@
                                (assoc :network @(re-frame/subscribe [::subs/network]))
                                (assoc :public-key (get-in st [:ledger :public-key])))]
                   (re-frame/dispatch [::events/go-to-next-step])
-                  (re-frame/dispatch [::events/load-cli-instructions])
                   (start-simulating form))}
     [:i.icon.icon-arrow-right]
     " Proceed"]])
@@ -101,7 +104,7 @@
   [:label.form-switch
    [:input {:type "checkbox"
             :on-change #(swap! state update :agreement not)}]
-   [:i.form-icon] "I understand"])
+   [:i.form-icon] "It looks good to me"])
 
 (defn- simulation-block [state]
   [:div
@@ -127,7 +130,7 @@
       (for [[key name] tabs]
         [:li.tab-item {:class (when (= key current) "active")
                        :key key}
-         [:a {:on-click #(swap! state assoc state-key key)} name]])]
+         [:a.c-hand {:on-click #(swap! state assoc state-key key)} name]])]
      [block state]]))
 
 (defn- using-ledger [state]
@@ -146,12 +149,15 @@
    [ledger-op-block state]])
 
 (defn- using-cli [state]
-  (let [cli-instructions @(re-frame/subscribe [::subs/ledger-sim-cli-description])]
-     [:div.card-body
-      [:h4 "use CLI"]
-      (if cli-instructions
-        [:pre.console cli-instructions]
-        [:div "loading instructions..."])]))
+  (let [cli-instructions @(re-frame/subscribe [::subs/ledger-sim-cli-description])
+        book-app @(re-frame/subscribe [::subs/ledger-sim-book-app])]
+    [:div.card-body
+     [:h4 "use CLI"]
+     (when-let [{:keys [title url synopsis]} book-app]
+       [:div title " : " [:a {:href url} url]])
+     (if cli-instructions
+       [:pre cli-instructions]
+       [:div "loading instructions..."])]))
 
 (defn- operation-block [state]
   [:div
@@ -161,9 +167,11 @@
      [:cli    "use CLI" using-cli]]]])
 
 (defn- doit-block []
-  (let [state (reagent/atom {:ledger-op     {:show false}
+  (let [initial-tab (if @(re-frame/subscribe [::subs/ledger-available?])
+                      :ledger :cli)
+        state (reagent/atom {:ledger-op     {:show false}
                              :agreement false
-                             :pay-by :ledger})]
+                             :pay-by initial-tab})]
     [(fn []
        [:div
         [simulation-block state]
@@ -192,7 +200,7 @@
      [:div {:class "col-6 col-md-6"}
       [common/input state [:entering :source-address]]]
      [:div.text-right {:class "col-3 col-md-6"}
-      [:div " or "
+      [:div "　or　"
        [:button.btn
         {:on-click #(do
                       (swap! state assoc-in [:ledger-pubkey :show] true)
@@ -207,8 +215,6 @@
   (let [{:strs [name email tzaddr]} (-> (js/window.TSCAInternalInterface.Proto0.defaultClerkUserInfo)
                                                js->clj)]
     {:name name :e-mail email :source-address tzaddr}))
-
-
 
 (defn clerk-top []
   (let [state (reagent/atom {:entering (load-default-user-info)

@@ -69,7 +69,8 @@
        :on-click #(let [networks    @(re-frame/subscribe [::subs/networks])
                         target-spec @(re-frame/subscribe [::subs/target-spec])
                         sahash      @(re-frame/subscribe [::subs/sahash])
-                        spell       (js/JSON.stringify (serializer (:entering @state))) ;todo error handling
+                        build-spell @(re-frame/subscribe [::subs/spell-builder])
+                        spell       (build-spell (serializer (:entering @state))) ;todo error handling
                         params      {:query-params {:networks  networks
                                                     :for       target-spec
                                                     :spell     spell

@@ -5,13 +5,18 @@
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [tsca-webapp.task.effects :as task]
    [oops.core :refer [oset!]]
-   ["../common/mock.js" :as mock])
+   ["../common/mock.js" :as mock]
+   [tsca-webapp.mock :as m])
   (:require-macros [tsca-webapp.aii :refer [defcommand]]))
 
 (declare aii)
 (def loading-interval 250)
 ;; (def aii-url "https://devapi.tsca.kxc.io/aii-jslib.js")
-(def aii-url "/js/aii-jslib.js")
+;; (def aii-url "/js/aii-jslib.js")
+(def aii-url "/_tscalibs/aii-jslib.js")
+
+(defn bookapp-url [spirit-hash]
+  (aii.Proto0.bookAppUrlForSpirit spirit-hash))
 
 (defn- load-script [url object-name]
   (let [el (doto (js/document.createElement "script")
@@ -28,7 +33,6 @@
   (-> (load-script aii-url "TSCAInternalInterface")
       (.then (fn [obj]
                (def aii obj)))))
-
 
 (defcommand bookhash-list []
   (aii.RefMaster.listAdvertizedBooks))
@@ -63,31 +67,52 @@
       (.then #(:verifier %))))
 
 (defn- build-process-request [network for spell user-info]
-  {:request-api aii.Proto0.processGenesisRequest
-   :simulate-api aii.Proto0.simulateGenesis
-   :request {:network network
-             :template (.-tmplhash for)
-             :requester (:source-address user-info)
-             :name (:name user-info)
-             :email (:e-mail user-info)
-             :spell spell}})
+  (if (= (.-spellkind for) "spellofgenesis")
+    {:request-api aii.Proto0.processGenesisRequest
+     :simulate-api aii.Proto0.simulateGenesis
+     :request {:network network
+               :template (.-tmplhash for)
+               :requester (:source-address user-info)
+               :name (:name user-info)
+               :email (:e-mail user-info)
+               :spell spell}}
+
+    {:request-api aii.Proto0.processInvocationRequest
+     :simulate-api aii.Proto0.simulateInvocation
+     :request {:network network
+               :spirit (.-sprthash for)
+               :requester (:source-address user-info)
+               :name (:name user-info)
+               :email (:e-mail user-info)
+               :spell spell}}))
+
+(defn- book-app-info [proc]
+  (some->
+   (.-sprthash proc)
+   aii.Proto0.bookAppUrlForSpirit))
 
 (comment
-  (let [{:keys [api request]} (build-process-request (js/JSON.parse m/testnet)
-                                                     {:spellkind "spellofgenesis"
-                                                      :tmplhash "tmpL1Q7GJiqzmwuS3SkSiWbreXWsxWrk3Y"}
-                                                     m/spell-frozen
-                                                     {:name "Ichiro Sakai"
-                                                      :e-mail "i.sakai@example.org"
-                                                      :source-address "tz1gmHNqdXuM5bf8FU9dNaACuAqgRA9VLGUm"
-                                                      ;; "tz1NQ5Fk7eJCe1zGmngv2GRnJK9G1nEnQahQ"
-                                                      })]
-    (def api api)
+  (let [{:keys [request-api simulate-api request]} (build-process-request (js/JSON.parse m/testnet)
+                                                                          (clj->js {:spellkind "spellofgenesis"
+                                                                                    :tmplhash "tmpL1Q7GJiqzmwuS3SkSiWbreXWsxWrk3Y"})
+                                                                          m/spell-frozen
+                                                                          {:name "Ichiro Sakai"
+                                                                           :e-mail "i.sakai@example.org"
+                                                                           :source-address "tz1gmHNqdXuM5bf8FU9dNaACuAqgRA9VLGUm"
+                                                                           ;; "tz1NQ5Fk7eJCe1zGmngv2GRnJK9G1nEnQahQ"
+                                                                           })]
+    (def request-api request-api)
     (def request (clj->js request)))
   
-  (.then (api request)
+  (.then (request-api request)
          #(def proc %))
+  (js->clj proc)
 
+  (some->
+   (.-sprthash proc)
+   TSCAInternalInterface.Proto0.bookAppUrlForSpirit
+   (.then #(def book-url %)))
+  
   (-> (TSCAInternalInterface.Proto0.simulateGenesis request proc)
       (.then
        (fn [[result-type message]]
@@ -102,20 +127,22 @@
   (str (get sim-result "watermark")
        (get sim-result "unsigned_transaction")))
 
-
 (defn- simulate [network for spell user-info]
   (let [{:keys [request-api simulate-api request]} (build-process-request network for spell user-info)
         request (clj->js request)]
     (-> (request-api request)
         (.then (fn [proc]
                  (let [instruction (aii.Helpers.formatCliInstructionIntoString (.-cli_instructions proc))]
-                   (prn "proc" simulate-api)
-                   (-> (simulate-api request proc)
-                       (.then (fn [[result-type result]]
-                                (if (= result-type "SimulationFailed")
-                                  (js/Promise.reject (get (js->clj result) "error_message"))
-                                  (assoc (js->clj result :keywordize-keys true)
-                                         :instruction instruction)))))))))))
+                   (-> (book-app-info proc)
+                       (.then (fn [book-app]
+                                (-> (simulate-api request proc)
+                                    (.then (fn [[result-type result]]
+                                             (if (= result-type "SimulationFailed")
+                                               (js/Promise.reject (get (js->clj result) "error_message"))
+                                               (assoc (js->clj result :keywordize-keys true)
+                                                      :instruction instruction
+                                                      :sprthash (.-sprthash proc)
+                                                      :book-app (js->clj book-app :keywordize-keys true)))))))))))))))
 
 (defcommand check-operation-injection [inject-token]
   (aii.Proto0.checkOperationInjection #js {:injtoken inject-token}))
@@ -125,17 +152,27 @@
        (= templatefees (:templatefees fees))
        (= rawamount (:rawamount fees))))
 
-(defcommand inject-operation [txn public-key source-address signature js-network]
-  (aii.Proto0.injectOperation #js {:unsignedtxn txn
-                                   :signer public-key
-                                   :srcaddr source-address
-                                   :signature signature
-                                   :network js-network}))
+(defcommand inject-operation [txn signature js-network]
+  (aii.Proto0.injectOperation #js {:network js-network
+                                   :unsigned_transaction txn
+                                   :signature signature}))
+
+(comment
+  (let [txn (js/String "8b03231294f42505690aeb53bbafad508ddf178a38eb15ea231b650db394455e6c001e44b16562327dd33068e4731764191461bcccbecb4cbdbf4f9be005e50a80897a01aa0cd86d31f79ef4fa5934134dd768e733816cc700ff000000007805050505050807070303070707070100000015737072743164616d337363746c67347a77706468740000070707070a00000010e80b9b85eb32a7143b16ae8a3473b8700a0000002005070702000000120100000005616c6963650100000003626f6200b0c78a820c07070080897a070700a0843d00a0843d")
+        signature (js/String "a57e6eff8c043eb4a2758355109b7f78943a5c546afff82f8f4a78e5715b1c81e5fa081dc07a580a4264e96cb32d1ca511ea576b30b289768588bf9405943b04")
+        js-network #js {:netident "testnet", :chain_id "NetXm8tYqnMWky1"}]
+    (-> (TSCAInternalInterface.Proto0.injectOperation #js {:network js-network
+                                                           :unsigned_transaction txn
+                                                           :signature signature})
+        (.then #(def inj-result %)))))
 
 (defn- inject [txn public-key source-address signature js-network]
-  (-> (inject-operation txn public-key source-address signature js-network)
-      (.then (fn [{:keys [injtoken timeout minqueryinterval]}]
-               {:injection-token injtoken :interval minqueryinterval}))))
+  (-> (inject-operation txn signature js-network)
+      (.then (fn [[result-type result]]
+               (prn "pass" result-type result)
+               (if (= result-type "InjectionFailed")
+                 (js/Promise.reject (:error_message result))
+                 (js->clj result :keywordize-keys true))))))
 
 (defcommand template-current-version [tmplhash]
   (aii.RefMaster.templateCurrentVersion #js {:tmplhash tmplhash}))
@@ -152,12 +189,6 @@
   (clojure.string/join "\n" [(str "sahash: " sahash)
                              (str "spell: " spell)
                              (str "for: " for)]))
-
-(defcommand generate-cli-instructions [sahash spell]
-  [{:prompt "dummy"
-    :line (str "tezos-client transfer 10 from "
-               "tz1NQ5Fk7eJCe1zGmngv2GRnJK9G1nEnQahQ"
-               " to KT1CUTjTqf4UMf6c9A8ZA4e1ntWbLVTnvrKG --arg \"0x030292837483\" --fee 0.572 --burn-cap 2.3")}])
 
 (re-frame/reg-fx
  :aii-initialize
@@ -210,13 +241,12 @@
          [{:type :provider-info :providerident providerident}] (provider-info providerident)
          [{:type :source-address :public-key pk}] (calculate-address-from-public-key pk)
          [{:type :simulate :network network :for for :spell spell :user-info user-info}] (simulate network for spell user-info)
-         [{:type :cli-instructions
-           :sahash sahash :spell spell}]    (generate-cli-instructions sahash spell)
          [{:type :spell-verifier :sahash sahash}] (generate-spell-verifier sahash)
          [{:type :description :sahash sahash :for for :spell spell}] (generate-description for spell sahash)
          [{:type :inject-operation :signature signature
            :txn txn :public-key public-key :source-address source-address
            :network js-network}] (inject txn public-key source-address signature js-network)
+         [{:type :confirm-injection :injection-token injection-token :interval interval}] (waiting-for-done injection-token interval)
          :else (js/Promise.reject (str "unknown command" command))))
 
 (re-frame/reg-fx

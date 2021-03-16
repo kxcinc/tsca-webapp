@@ -4,6 +4,5 @@
    [tsca-webapp.ledger.effects]
    [tsca-webapp.task.effects]
    [tsca-webapp.aii.effects]
-   [tsca-webapp.bil.effects]
    [tsca-webapp.dom.effects]))
 

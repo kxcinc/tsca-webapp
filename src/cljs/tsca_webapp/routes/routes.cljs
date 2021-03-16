@@ -4,7 +4,6 @@
             [secretary.core :as secretary]
             [re-frame.core :as re-frame]
             [tsca-webapp.book.events :as book]
-            [tsca-webapp.book-app.events :as book-app]
             [tsca-webapp.sa-proto.events :as sa-proto]
             [tsca-webapp.chain-clerk.events :as cc]))
 

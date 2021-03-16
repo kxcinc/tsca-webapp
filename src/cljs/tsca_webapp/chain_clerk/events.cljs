@@ -116,30 +116,6 @@
             (-> db
                 (assoc-in [:clerk :ledger :state :sim] {:status :error
                                                         :message message}))))
-;; cli-desc
-(re-frame/reg-event-fx
- ::load-cli-instructions
- (fn-traced [{:keys [db]} _]
-            (let [{:keys [sahash spell]} (get-in db [:routing-params :query-params])]
-              {:db (-> db
-                       (assoc-in [:clerk :ledger :state :inst ] {:status :loding}))
-               :aii {:commands [{:type :cli-instructions
-                                 :sahash sahash :spell spell}]
-                     :success-id ::load-cli-instructions-done
-                     :error-id   ::load-cli-instructions-error}})))
-(re-frame/reg-event-db
- ::load-cli-instructions-done
- (fn-traced [db [_ [instructions]]]
-            (-> db
-                (assoc-in [:clerk :ledger :state :inst ] {:status :done
-                                                          :instrunctions instructions}))))
-
-(re-frame/reg-event-db
- ::load-cli-instructions-error
- (fn-traced [db [_ ex]]
-            (-> db
-                (assoc-in [:clerk :ledger :state :inst ] {:status :error
-                                                          :error ex}))))
 
 ;; op
 (re-frame/reg-event-fx
@@ -153,32 +129,21 @@
 (re-frame/reg-event-fx
  ::ledger-connecting-op
  (fn-traced [{:keys [db]} _]
-            (let [form (get-in db [:clerk :form])
-                  sim-result (get-in db [:clerk :ledger :state :sim :result])]
-              {:db (assoc-in db [:clerk :ledger :state :op :status] :confirming)
-               :aii {:commands [{:type :re-simulate
-                                 :adjusted-txn (:adjustedtxn sim-result)
-                                 :simprivinfo (:simprivinfo sim-result)
-                                 :source-address (:source-address form)
-                                 :network (:network form)
-                                 :fee (select-keys sim-result [:networkfees :templatefees :rawamount])}]
-                     :success-id ::re-simulation-done
-                     :error-id   ::error-occured-op}})))
+            (let [{:keys [unsigned_transaction watermark]} (get-in db [:clerk :ledger :state :sim :result])]
+              {:db (assoc-in db [:clerk :ledger :state :op :status] :signing)
+               :ledger-sign {:watermark watermark
+                             :operation-text unsigned_transaction
+                             :success-id ::ledger-signed
+                             :error-id   ::error-occured-op}})))
 
 (re-frame/reg-event-fx
- ::re-simulation-done
- (fn-traced [{:keys [db]} [_ [txn]]]
-            {:db (assoc-in db [:clerk :ledger :state :op :status] :signing)
-             :ledger-sign {:operation-text txn
-                           :success-id ::ledger-signed
-                           :error-id   ::error-occured-op}}))
-(re-frame/reg-event-fx
  ::ledger-signed
- (fn-traced [{:keys [db]} [_ {:keys [txn signature]}]]
-            (let [form (get-in db [:clerk :form])]
+ (fn-traced [{:keys [db]} [_ {:keys [_txn signature]}]]
+            (let [form (get-in db [:clerk :form])
+                  unsigned_transaction (get-in db [:clerk :ledger :state :sim :result :unsigned_transaction])]
               {:db (assoc-in db [:clerk :ledger :state :op :status] :sending-op)
                :aii {:commands [(merge {:type :inject-operation :signature signature
-                                        :txn txn}
+                                        :txn unsigned_transaction}
                                        (select-keys form
                                                     [:public-key :source-address :network]))]
                      :success-id ::injection-requested
@@ -186,12 +151,9 @@
 
 (re-frame/reg-event-fx
  ::injection-requested
- (fn-traced [{:keys [db]} [_ [{:keys [injection-token interval]}]]]
+ (fn-traced [{:keys [db]} [_ [result]]]
             {:db (assoc-in db [:clerk :ledger :state :op :status] :waiting-for-done)
-             :aii {:commands [{:type :confirm-injection
-                               :injection-token injection-token :interval interval}]
-                   :success-id ::done
-                   :error-id   ::error-occured-op}}))
+             :dispatch [::done [result]]}))
 
 (re-frame/reg-event-db
  ::done

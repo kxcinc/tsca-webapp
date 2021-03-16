@@ -17,25 +17,16 @@
 
 (re/reg-sub
  ::parameters
- :<- [::common/routing-params]
  :<- [::book-app]
- (fn [[{:keys [bahash]} {:keys [values]}]]
-   (match [bahash]
-          ["MOCK_bookhash_proto0_funny"]
-          [{:title "Initial Balance" :value ":smile:"}]
-
-          ["MOCK_bookhash_proto0_frozen"]
-          [{:title "Fund Balance" :value (:fund-amount values)}
-           {:title "Frozen Until" :value (:frozen-until values)}
-           {:title "Original Fund Amount" :value (:original-fund-amount values)}]
-          :else [])))
+ (fn [{:keys [values]}]
+   [{:title "Fund Balance" :value (:balance values)}
+    {:title "Unfrozen Until" :value (:unfrozen values)}
+    {:title "Owners" :value (clojure.string/join "," (:owners values))}
+    {:title "Contact" :value (:contract values)}]))
 
 (re/reg-sub
  ::button-label
  :<- [::common/routing-params]
- (fn [{:keys [bahash]}]
-   (match [bahash]
-          ["MOCK_bookhash_proto0_funny"]  "make fun!"
-          ["MOCK_bookhash_proto0_frozen"] "withdraw"
-          :else "unknown")))
+ (fn [_]
+   "withdraw"))
 

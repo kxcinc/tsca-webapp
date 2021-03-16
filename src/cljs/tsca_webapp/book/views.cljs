@@ -9,7 +9,8 @@
    [tsca-webapp.book.events :as events]
    [tsca-webapp.routes.routes :as rt]
    [tsca-webapp.common.view-parts :as common]
-   [tsca-webapp.common.util :as u]))
+   [tsca-webapp.common.util :as u]
+   [tsca-webapp.aii.effects :as aii-effects]))
 
 (defn- highlightable [phrase text]
   (->> (interleave (.split text phrase) (repeat phrase))
@@ -28,20 +29,43 @@
               [:h3 title]]
              [:div (highlightable (:search-text @state) synopsis)]]))])
 
-
+(defn- open-bookapp [spirit-hash]
+  (when-not (empty? spirit-hash)
+    (some-> spirit-hash
+            aii-effects/bookapp-url
+            (.then #(js/window.open (.-url %))))))
+(defn- open-bookapp-button [state]
+  (fn []
+    (let [spirit-hash (:spirit-hash @state)]
+      [:span.btn {:class (when-not (empty? spirit-hash)
+                           "bg-primary")
+                  :on-click #(open-bookapp spirit-hash)}
+       "Open app page"])))
 
 (defn home-panel []
   (let [loaded (re-frame/subscribe [::subs/books-loaded?])
-        state (reagent/atom {:search-text ""})]
+        state (reagent/atom {:search-text ""
+                             :spirit-hash ""})]
     [:div.docs-content
+     [:h1 "TSC Agency"]
+     [:form.form-horizontal
+      [:div.form-group
+       [:div.col-1.col-sm-12
+        [:label "Spirit Hash"]]
+       [:div.col-3.col-sm-12
+        [common/input state [:spirit-hash]]]
+       [:div.col-3.col-sm-12
+        [:span "　"]
+        [open-bookapp-button state]]]]
+     [:hr]
      [:div.columns
-      [:div.column.col-8 [:h1 "TSC Agency"]]
-      [:div.column.col-4
+      [:div.column.col-6 ]
+      [:div.column.col-6
        [:form.form-horizontal
         [:div.form-group
          [:div.col-3.col-sm-12
-          [:label.form-label "Search: "]]
-         [:div.col-9.col-sm-12
+          [:label.form-label.text-right "Search:　"]]
+         [:div.col-8.col-sm-12
           [common/input state [:search-text]]]]]]]
      [:div.divider]
      (if @loaded

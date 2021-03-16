@@ -10,7 +10,8 @@
 
 (declare bil)
 (def loading-interval 250)
-(def bil-url "/js/bil-jslib.js")
+;; (def bil-url "/js/bil-jslib.js")
+(def bil-url "/_tscalibs/bookapp-interface.js")
 
 (defn- load-script [url object-name]
   (let [el (doto (js/document.createElement "script")
@@ -37,14 +38,15 @@
   (-> (.split source ";")
       second))
 
-(defn process-single [_]
-  (let [avatar (-> (bil.avatars) first bil.avatarInfo)]
-    {:fund-amount          (.-balance avatar)
-     :original-fund-amount (.-amount (bil.genesisInfo))
-     :frozen-until         (parse-period (.-storage avatar))}))
+
+
+(defn load-initial-values []
+  (-> (bil.interpretSpiritStatus "basic.json")
+      (.then (fn [[_ result-json]] result-json))
+      (.then js/JSON.parse)
+      (.then #(js->clj % :keywordize-keys true))))
 
 (re-frame/reg-fx
  :bil
  (fn [{:keys [commands] :as callback-ids}]
-   (let [promise (js/Promise.all (map process-single commands))]
-     (task/callback callback-ids (.then promise #(mock/sleep 1000 %))))))
+   (task/callback callback-ids (load-initial-values))))
